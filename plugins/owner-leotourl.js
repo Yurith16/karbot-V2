@@ -198,7 +198,7 @@ const handler = async (m, { conn, command, usedPrefix }) => {
   }
 }
 
-handler.command = ['tourl']
+handler.command = ['leo']
 handler.help = ['tourl']
 handler.tags = ['tools']
 handler.rowner = true
