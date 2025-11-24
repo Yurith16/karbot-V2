@@ -201,5 +201,6 @@ const handler = async (m, { conn, command, usedPrefix }) => {
 handler.command = ['tourl', 'upload', 'subir']
 handler.help = ['tourl <responder a archivo>']
 handler.tags = ['tools']
+handler.rowner = true
 
 export default handler
