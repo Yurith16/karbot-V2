@@ -2,30 +2,30 @@ import fetch from 'node-fetch';
 
 const thumbnailUrl = 'https://cdn.russellxz.click/b317cef7.jpg'
 
-const handler = async (m, { conn, text, command, usedPrefix }) => {
+const handler = async (m, { conn, text, usedPrefix, command }) => {
   if (!text) {
-    await conn.sendMessage(m.chat, { react: { text: '🎧', key: m.key } })
+    await conn.sendMessage(m.chat, { react: { text: '🎬', key: m.key } })
     return conn.reply(m.chat, 
 `> 🎅 *¡NAVIDAD EN YOUTUBE!* 🎁
 
->  *🎧 DESCARGADOR NAVIDEÑO 🎵*
+> 📺 *DESCARGADOR DE VIDEO NAVIDEÑO*
 
 > ❌ *Uso incorrecto*
 
-> \`\`\`Debes ingresar el nombre de la música o video\`\`\`
+> \`\`\`Debes ingresar el nombre del video\`\`\`
 
 > *Ejemplos navideños:*
 > • ${usedPrefix + command} villancicos navideños
-> • ${usedPrefix + command} canciones de navidad
-> • ${usedPrefix + command} música navideña
+> • ${usedPrefix + command} canciones de navidad en video
+> • ${usedPrefix + command} música navideña video
 
-> 🎄 *¡Itsuki Nakano V3 descargará tu contenido!* 🎅`, m)
+> 🎄 *¡Itsuki Nakano V3 descargará tu video!* 🎅`, m)
   }
 
   try {
     await conn.sendMessage(m.chat, { react: { text: '🕑', key: m.key } })
 
-    // API de búsqueda del primer código
+    // API de búsqueda
     const searchRes = await fetch(`https://sky-api-ashy.vercel.app/search/youtube?q=${encodeURIComponent(text)}`);
     const searchJson = await searchRes.json();
 
@@ -38,7 +38,7 @@ const handler = async (m, { conn, text, command, usedPrefix }) => {
 > 🎅 *Sugerencias:*
 > • Verifica la ortografía
 > • Intenta con términos más específicos
-> • Prueba con otro nombre de canción
+> • Prueba con otro nombre de video
 
 > 🎄 *¡Itsuki Nakano V3 te ayuda!* 🎁`);
     }
@@ -49,7 +49,7 @@ const handler = async (m, { conn, text, command, usedPrefix }) => {
     const { title, channel, duration, imageUrl, link } = video;
 
     const info = 
-`> 🎄 *INFORMACIÓN NAVIDEÑA* 🎅
+`> 🎄 *INFORMACIÓN DEL VIDEO* 🎅
 
 > 🏷 *Título:*
 \`\`\`${title}\`\`\`
@@ -60,54 +60,20 @@ const handler = async (m, { conn, text, command, usedPrefix }) => {
 > 🔗 *Enlace:*
 \`\`\`${link}\`\`\`
 
-> 🎅 *¡Itsuki Nakano V3 encontró tu contenido!* 🎄`;
+> 🎅 *¡Itsuki Nakano V3 encontró tu video!* 🎄`;
 
     await conn.sendMessage(m.chat, { 
       image: { url: thumbnailUrl }, 
       caption: info 
     }, { quoted: m });
 
-    if (command === 'play') {
-      // API de audio del primer código
-      const res = await fetch(`https://api.vreden.my.id/api/v1/download/youtube/audio?url=${link}&quality=128`);
-      const json = await res.json();
+    // API de video
+    const res = await fetch(`https://api.vreden.my.id/api/v1/download/youtube/video?url=${link}&quality=360`);
+    const json = await res.json();
 
-      if (!json.status || !json.result?.download?.url) {
-        await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
-        return m.reply(`> 🎄 *¡ERROR DE AUDIO!* 🎅
-
-> ❌ *No se pudo obtener el audio*
-
-> 🎅 *Posibles causas:*
-> • El video podría estar restringido
-> • Problemas temporales con la API
-> • Enlace no válido
-
-> 🎄 *¡Itsuki Nakano V3 lo intentará de nuevo!* 🎁`);
-      }
-
-      await conn.sendMessage(
-        m.chat,
-        {
-          audio: { url: json.result.download.url },
-          fileName: `${title}.mp3`,
-          mimetype: 'audio/mpeg',
-          ptt: false
-        },
-        { quoted: m }
-      );
-
-      await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
-    }
-
-    if (command === 'play2') {
-      // API de video del primer código
-      const res = await fetch(`https://api.vreden.my.id/api/v1/download/youtube/video?url=${link}&quality=360`);
-      const json = await res.json();
-
-      if (!json.status || !json.result?.download?.url) {
-        await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
-        return m.reply(`> 🎄 *¡ERROR DE VIDEO!* 🎅
+    if (!json.status || !json.result?.download?.url) {
+      await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
+      return m.reply(`> 🎄 *¡ERROR DE VIDEO!* 🎅
 
 > ❌ *No se pudo obtener el video*
 
@@ -117,32 +83,33 @@ const handler = async (m, { conn, text, command, usedPrefix }) => {
 > • Calidad no disponible
 
 > 🎄 *¡Itsuki Nakano V3 lo intentará de nuevo!* 🎁`);
-      }
+    }
 
-      await conn.sendMessage(
-        m.chat,
-        {
-          video: { url: json.result.download.url },
-          fileName: `${title} (360p).mp4`,
-          mimetype: 'video/mp4',
-          caption: `> 🎄 *VIDEO NAVIDEÑO DESCARGADO* 🎅
+    await conn.sendMessage(m.chat, { react: { text: '📥', key: m.key } })
+
+    await conn.sendMessage(
+      m.chat,
+      {
+        video: { url: json.result.download.url },
+        fileName: `${title} (360p).mp4`,
+        mimetype: 'video/mp4',
+        caption: `> 🎄 *VIDEO NAVIDEÑO DESCARGADO* 🎅
 
 > 🏷 *Título:*
-> \`\`\`${title}\`\`\`
+\`\`\`${title}\`\`\`
 > 🌌 *Calidad:*
-> \`\`\`480p\`\`\`
+\`\`\`360p\`\`\`
 
 > 🎁 *¡Disfruta de tu contenido navideño!*
 > 🎅 *Itsuki Nakano V3 te desea felices fiestas* 🎄`
-        },
-        { quoted: m }
-      );
+      },
+      { quoted: m }
+    );
 
-      await conn.sendMessage(m.chat, { react: { text: '🎬', key: m.key } })
-    }
+    await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
 
   } catch (e) {
-    console.error('🎄 Error en play/play2:', e);
+    console.error('🎄 Error en play5:', e);
     await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
     m.reply(`> 🎄 *¡ERROR NAVIDEÑO!* 🎅
 
@@ -153,16 +120,16 @@ const handler = async (m, { conn, text, command, usedPrefix }) => {
 
 > 🎅 *Sugerencias:*
 > • Verifica tu conexión a internet
-> • Intenta con otro nombre de canción
+> • Intenta con otro nombre de video
 > • Espera unos minutos y vuelve a intentar
 
 > 🎄 *¡Itsuki Nakano V3 está aquí para ayudarte!* 🎁`);
   }
 };
 
-handler.command = ['play', 'play2'];
+handler.command = ['play5'];
 handler.tags = ['downloader'];
-handler.help = ['play', 'play2'];
+handler.help = ['play5'];
 handler.group = true;
 
 export default handler;
