@@ -40,7 +40,7 @@ let handler = async (m, { conn, text, usedPrefix }) => {
   }    
 
   try {    
-    await conn.sendMessage(m.chat, { react: { text: '🕑', key: m.key } })
+    await conn.sendMessage(m.chat, { react: { text: '🔍', key: m.key } })
 
     const searchResults = await yts(text)    
     if (!searchResults.videos.length) throw new Error('No se encontraron resultados')    
@@ -48,7 +48,7 @@ let handler = async (m, { conn, text, usedPrefix }) => {
     const video = searchResults.videos[0]    
     const { url, title, fuente } = await ytdl(video.url)    
 
-    const caption = ' > *ⓘ Y O U T U B E - P L A Y V3*
+    const caption = `> *ⓘ Y O U T U B E - P L A Y V3*
 
 > *🏷 ${title}*
 > *⏱️ ${video.timestamp}*
