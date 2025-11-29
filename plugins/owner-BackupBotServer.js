@@ -67,21 +67,6 @@ function parseArgs(args) {
   return opts
 }
 
-// Quoted especial con mini-thumbnail de respaldo exitoso
-async function makeFkontak() {
-  try {
-    const res = await fetch('https://i.postimg.cc/rFfVL8Ps/image.jpg')
-    const thumb2 = Buffer.from(await res.arrayBuffer())
-    return {
-      key: { participants: '0@s.whatsapp.net', remoteJid: 'status@broadcast', fromMe: false, id: 'Halo' },
-      message: { locationMessage: { name: 'Backup Exito', jpegThumbnail: thumb2 } },
-      participant: '0@s.whatsapp.net'
-    }
-  } catch {
-    return undefined
-  }
-}
-
 let handler = async (m, { conn, args }) => {
   const opts = parseArgs(args)
   const includeSessions = !!opts.includeSessions
@@ -91,17 +76,21 @@ let handler = async (m, { conn, args }) => {
   const exportDir = path.join(TEMP, base)
   const zipPath = path.join(TEMP, `${base}.zip`)
 
-  await conn.reply(m.chat, '', m, rcanalw)
+  await conn.sendMessage(m.chat, { react: { text: '📦', key: m.key } })
   await fsp.mkdir(TEMP, { recursive: true }).catch(() => {})
 
   try {
+    await conn.reply(m.chat, `> ⓘ CREANDO BACKUP\n\n📁 Copiando archivos...`, m)
     await copyTree(ROOT, exportDir, includeSessions)
   } catch (e) {
-    return conn.reply(m.chat, `❌ Error copiando archivos: ${e?.message || e}`, m, rcanalx)
+    await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
+    return conn.reply(m.chat, `> ⓘ ERROR\n\n❌ Error copiando archivos`, m)
   }
 
   let artifact = zipPath
   try {
+    await conn.reply(m.chat, `> ⓘ COMPRIMIENDO\n\n🗜️ Comprimiendo archivos...`, m)
+    
     if (process.platform === 'win32') {
       await zipFolderWin(exportDir, zipPath)
     } else {
@@ -111,28 +100,33 @@ let handler = async (m, { conn, args }) => {
     const stat = await fsp.stat(artifact)
     const maxSend = 95 * 1024 * 1024
     if (stat.size > maxSend) {
-      await conn.reply(
+      await conn.sendMessage(m.chat, { react: { text: '⚠️', key: m.key } })
+      return conn.reply(
         m.chat,
-        `⚠️ El archivo pesa ${(stat.size / 1024 / 1024).toFixed(1)}MB. Guardado en: ${artifact}. Súbelo manualmente.`,
-        m,
-        rcanalx
+        `> ⓘ ARCHIVO DEMASIADO GRANDE\n\n❌ Pesa: ${(stat.size / 1024 / 1024).toFixed(1)}MB\n💡 Sube manualmente: ${artifact}`,
+        m
       )
-      return
     }
 
+    await conn.reply(m.chat, `> ⓘ ENVIANDO\n\n📤 Enviando backup...`, m)
+    
     const buffer = await fsp.readFile(artifact)
     const fileName = path.basename(artifact)
     const mt = artifact.endsWith('.zip')
       ? 'application/zip'
       : (artifact.endsWith('.tar.gz') ? 'application/gzip' : 'application/octet-stream')
-    const fancyQuoted = await makeFkontak()
+    
     await conn.sendMessage(
       m.chat,
-      { document: buffer, mimetype: mt, fileName, ...(typeof rcanalr === 'object' ? rcanalr : {}) },
-      { quoted: fancyQuoted || m }
+      { document: buffer, mimetype: mt, fileName },
+      { quoted: m }
     )
+
+    await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
+
   } catch (e) {
-    await conn.reply(m.chat, `❌ Error comprimiendo/enviando: ${e?.message || e}`, m, rcanalx)
+    await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
+    await conn.reply(m.chat, `> ⓘ ERROR\n\n❌ Error al crear backup`, m)
   } finally {
     try { await fsp.rm(exportDir, { recursive: true, force: true }) } catch {}
     try { await fsp.rm(artifact, { force: true }) } catch {}
@@ -145,4 +139,3 @@ handler.command = ['backup', 'backupbot', 'export', 'respaldo']
 handler.rowner = true
 
 export default handler
-
