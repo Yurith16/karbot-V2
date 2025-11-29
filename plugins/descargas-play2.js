@@ -24,51 +24,48 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     }, { quoted: m })
 
     if (command === 'play11') {
-      // DESCARGAR VIDEO - Método directo
+      // Descargar video - USANDO LA MISMA LÓGICA DE PLAY2
       try {
-        // Primero intentar con la API principal
         const result = await fetch(`https://fgsi.dpdns.org/api/downloader/youtube/v2?apikey=fgsiapi-335898e9-6d&url=${video.url}&type=mp4`).then(r => r.json())
-        
-        if (result?.data?.url) {
-          // Enviar como URL directa (sin buffer)
-          await conn.sendMessage(m.chat, {
-            video: { 
-              url: result.data.url
-            },
-            caption: `> ⓘ \`Video:\` *${video.title}*`,
-            fileName: `${video.title}.mp4`,
-            mimetype: 'video/mp4'
-          }, { quoted: m })
-          await m.react('✅')
-        } else {
-          throw new Error('API 1 falló')
-        }
+        if (!result?.data?.url) throw new Error('API sin resultado válido')
+
+        // Descargar como buffer (igual que play2)
+        const buffer = await fetch(result.data.url).then(res => res.buffer())
+
+        await conn.sendMessage(m.chat, {
+          video: buffer,
+          mimetype: 'video/mp4',
+          fileName: `${video.title}.mp4`,
+          caption: `> ⓘ \`Video:\` *${video.title}*`
+        }, { quoted: m })
+
+        await m.react('✅')
       } catch (err) {
-        // Segundo intento con API alternativa
+        await m.react('❌')
+        // Intentar con otra API
         try {
           const altResult = await fetch(`https://api.nekolabs.fun/api/ytdl?url=${video.url}`).then(r => r.json())
           if (altResult?.videoUrl) {
-            // Enviar como URL directa
+            // Descargar como buffer (igual que play2)
+            const buffer = await fetch(altResult.videoUrl).then(res => res.buffer())
+
             await conn.sendMessage(m.chat, {
-              video: { 
-                url: altResult.videoUrl
-              },
-              caption: `> ⓘ \`Video:\` *${video.title}*`,
+              video: buffer,
+              mimetype: 'video/mp4',
               fileName: `${video.title}.mp4`,
-              mimetype: 'video/mp4'
+              caption: `> ⓘ \`Video:\` *${video.title}*`
             }, { quoted: m })
             await m.react('✅')
           } else {
-            throw new Error('API 2 falló')
+            throw new Error('APIs fallaron')
           }
         } catch (e) {
-          await m.react('❌')
-          conn.reply(m.chat, '> ⓘ \`Error: No se pudo descargar el video en formato compatible\`', m)
+          conn.reply(m.chat, '> ⓘ \`Error al descargar el video\`', m)
         }
       }
 
     } else {
-      // DESCARGAR AUDIO
+      // Descargar audio - USANDO LA MISMA LÓGICA
       try {
         const apiURL = `https://api.nekolabs.web.id/downloader/youtube/v1?url=${video.url}&format=mp3`
         const result = await fetch(apiURL).then(r => r.json())
@@ -77,18 +74,20 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         if (result?.result?.downloadUrl) {
           audioUrl = result.result.downloadUrl
         } else {
+          // Fallback
           const fallback = await fetch(`https://fgsi.dpdns.org/api/downloader/youtube/v2?apikey=fgsiapi-335898e9-6d&url=${video.url}&type=mp3`).then(r => r.json())
           if (!fallback?.data?.url) throw new Error('No hay URL válida')
           audioUrl = fallback.data.url
         }
 
-        // Enviar audio como URL directa
+        // Descargar audio como buffer
+        const buffer = await fetch(audioUrl).then(res => res.buffer())
+
         await conn.sendMessage(m.chat, {
-          audio: { 
-            url: audioUrl
-          },
+          audio: buffer,
           mimetype: 'audio/mpeg',
-          fileName: `${video.title}.mp3`
+          fileName: `${video.title}.mp3`,
+          ptt: false
         }, { quoted: m })
 
         await m.react('✅')
