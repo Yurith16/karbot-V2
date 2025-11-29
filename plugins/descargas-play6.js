@@ -191,7 +191,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
   }
 }
 
-handler.help = ['play10, 'play11']
+handler.help = ['play10' , 'play11']
 handler.tags = ['downloader']
 handler.command = ['play10', 'play11']
 
