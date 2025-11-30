@@ -21,9 +21,7 @@ let handler = async (m, { conn, command, args, usedPrefix }) => {
   }
 
   try {
-    await m.react('⏳');
-    
-    await conn.reply(m.chat, `> ⓘ \`Generando captura de:\` *${link}*`, m);
+    await m.react('🕑');
 
     let response = await fetch(`https://image.thum.io/get/fullpage/${link}`);
     if (!response.ok) throw new Error(`Error al obtener la captura`);
@@ -35,7 +33,7 @@ let handler = async (m, { conn, command, args, usedPrefix }) => {
       caption: `> ⓘ \`Captura de:\` *${link}*`
     }, { quoted: m });
     
-    await m.react('✅');
+    await m.react('✅️');
 
   } catch (err) {
     console.error(err);
