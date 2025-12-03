@@ -123,9 +123,9 @@ try { ({ handler } = await import('./handler.js')) } catch (e) { console.error('
 try {
   const { say } = cfonts
   const botDisplayName = (config && (config.botName || config.name || global.namebot)) || 'Bot'
-  console.log(chalk.magentaBright(`\n💫 Iniciando ${botDisplayName}...`))
-  say('Itsuki-Nakano', { font: 'simple', align: 'left', gradient: ['green','white'] })
-  say('By Leo xzzsy👑⚡️', { font: 'console', align: 'center', colors: ['cyan','magenta','yellow'] })
+  console.log(chalk.magentaBright(`\n🌱Iniciando ${botDisplayName}...`))
+  say('', { font: 'simple', align: 'left', gradient: ['green','white'] })
+  say('Powered by leo 👑', { font: 'console', align: 'center', colors: ['cyan','magenta','yellow'] })
   try { protoType() } catch {}
   try { serialize() } catch {}
   const packageJsonPath = path.join(__dirname, 'package.json')
@@ -134,7 +134,7 @@ try {
   const ramInGB = os.totalmem() / (1024 * 1024 * 1024)
   const freeRamInGB = os.freemem() / (1024 * 1024 * 1024)
   const currentTime = new Date().toLocaleString()
-  const info = `\n╭─────────────────────────────◉\n│ ${chalk.red.bgBlueBright.bold('        🖥 INFORMACIÓN DEL SISTEMA        ')}\n│「 💻 」${chalk.yellow(`SO: ${os.type()}, ${os.release()} - ${os.arch()}`)}\n│「 💾 」${chalk.yellow(`RAM Total: ${ramInGB.toFixed(2)} GB`)}\n│「 💽 」${chalk.yellow(`RAM Libre: ${freeRamInGB.toFixed(2)} GB`)}\n╰─────────────────────────────◉\n\n╭─────────────────────────────◉\n│ ${chalk.red.bgGreenBright.bold('        🟢 INFORMACIÓN DEL BOT        ')}\n│「 🎈 」${chalk.cyan(`Nombre: ${packageJsonObj.name || 'desconocido'}`)}\n│「 🍒 」${chalk.cyan(`Versión: ${packageJsonObj.version || '0.0.0'}`)}\n│「 🍉 」${chalk.cyan(`Descripción: ${packageJsonObj.description || ''}`)}\n│「 ☂️ 」${chalk.cyan(`Autor: ${(packageJsonObj.author && packageJsonObj.author.name) ? packageJsonObj.author.name : (packageJsonObj.author || 'N/A')} (@leo xzzsy)`)}\n│「 🐢 」${chalk.cyan('Colaborador: Bryan ofc Davidryze y mas')}\n╰─────────────────────────────◉\n\n╭─────────────────────────────◉\n│ ${chalk.red.bgMagenta.bold('        ⏰ HORA ACTUAL        ')}\n│「 🕒 」${chalk.magenta(`${currentTime}`)}\n╰─────────────────────────────◉\n`
+  const info = `\n╭─────────────────────────────◉\n│ ${chalk.red.bgBlueBright.bold('        🖥 INFORMACIÓN DEL SISTEMA        ')}\n│「 💻 」${chalk.yellow(`SO: ${os.type()}, ${os.release()} - ${os.arch()}`)}\n│「 💾 」${chalk.yellow(`RAM Total: ${ramInGB.toFixed(2)} GB`)}\n│「 💽 」${chalk.yellow(`RAM Libre: ${freeRamInGB.toFixed(2)} GB`)}\n╰─────────────────────────────◉\n\n╭─────────────────────────────◉\n│ ${chalk.red.bgGreenBright.bold('        🟢 INFORMACIÓN DEL BOT        ')}\n│「 🍃 」${chalk.cyan(`Nombre: ${packageJsonObj.name || 'desconocido'}`)}\n│「 🔰 」${chalk.cyan(`Versión: ${packageJsonObj.version || '0.0.0'}`)}\n│「 📜 」${chalk.cyan(`Descripción: ${packageJsonObj.description || ''}`)}\n│「 👤 」${chalk.cyan(`Autor: ${(packageJsonObj.author && packageJsonObj.author.name) ? packageJsonObj.author.name : (packageJsonObj.author || 'N/A')} (@leo )`)}\n│「 👑 」${chalk.cyan('Colaborador: Bryan ofc x davidxzy')}\n╰─────────────────────────────◉\n\n╭─────────────────────────────◉\n│ ${chalk.red.bgMagenta.bold('        ⏰ HORA ACTUAL        ')}\n│「 🕒 」${chalk.magenta(`${currentTime}`)}\n╰─────────────────────────────◉\n`
   console.log(info)
 } catch (e) {
   console.log('[Banner] Error al mostrar banners:', e.message)
@@ -389,7 +389,7 @@ async function startBot() {
         const rawId = sock?.user?.id || ''
         const userJid = rawId ? jidNormalizedUser(rawId) : 'desconocido'
         const userName = sock?.user?.name || sock?.user?.verifiedName || 'Desconocido'
-        console.log(chalk.green.bold(`[ 🍉 ]  Conectado a: ${userName}`))
+        console.log(chalk.green.bold(`[ ✅️ ]  Conectado a: ${userName}`))
         const jid = rawId
         const num = jid.split(':')[0].replace(/[^0-9]/g,'')
         if (num && !config.botNumber && !global.botNumber) {
