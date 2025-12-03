@@ -700,7 +700,7 @@ global.dfail = (type, m, conn, usedPrefix = global.prefix || '.') => {
     restrict: '> `ⓘ ᥴ᥆mᥲᥒძ᥆ rᥱs𝗍rіᥒgіძ᥆ ⍴᥆r ძᥱᥴіsі᥆ᥒ ძᥱᥣ ⍴r᥆⍴іᥱ𝗍ᥲrі᥆ ძᥱᥣ ᑲ᥆𝗍.`'
   }[type];
 
-    if (msg) return conn.reply(m.chat, msg, m, global.rcanal).then(_ => m.react('✖️'))
+    if (msg) return conn.reply(m.chat, msg, m, global.rcanal).then(_ => m.react('❌️'))
 }
 
 let file = global.__filename(import.meta.url, true)
