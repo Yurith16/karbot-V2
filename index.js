@@ -8,8 +8,15 @@ import qrcode from 'qrcode-terminal'
 import libPhoneNumber from 'google-libphonenumber'
 import cfonts from 'cfonts'
 import pino from 'pino'
-import { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, Browsers, jidNormalizedUser } from '@whiskeysockets/baileys'
-import { makeWASocket, protoType, serialize } from './lib/simple.js'
+import { 
+  useMultiFileAuthState, 
+  DisconnectReason, 
+  fetchLatestBaileysVersion, 
+  Browsers, 
+  jidNormalizedUser,
+  makeWASocket as baileysMakeWASocket
+} from '@whiskeysockets/baileys'
+import { protoType, serialize } from './lib/simple.js'
 import config from './config.js'
 import { loadDatabase, saveDatabase, DB_PATH } from './lib/db.js'
 import { watchFile } from 'fs'
@@ -21,6 +28,15 @@ const __dirname = path.dirname(__filename)
 
 global._filename = __filename
 
+// FUNCIÓN decodeJid CORREGIDA
+global.decodeJid = (jid) => {
+  if (!jid) return jid
+  if (/:\d+@/gi.test(jid)) {
+    return jidNormalizedUser(jid)
+  }
+  return jid
+}
+
 global.prefixes = Array.isArray(config.prefix) ? [...config.prefix] : []
 global.owner = Array.isArray(config.owner) ? config.owner : []
 global.opts = global.opts && typeof global.opts === 'object' ? global.opts : {}
@@ -29,11 +45,10 @@ if (!fs.existsSync("./tmp")) {
   fs.mkdirSync("./tmp");
 }
 
-// MOSTRAR BANNER DEL OTRO ARCHIVO (ItsukiStart.js)
+// BANNER DE ITSUKI
 console.log('')
 const { say } = cfonts
 
-// Título con gradiente rosado
 say('ItsukiNakanoV3', {
   font: 'chrome',
   align: 'center',
@@ -42,8 +57,7 @@ say('ItsukiNakanoV3', {
   transitionGradient: true
 });
 
-// Mensaje adicional rosado
-say('', {
+say('BOT MULTI-DEVICE', {
   font: 'block',
   align: 'center',
   colors: ['#FF69B4'],
@@ -54,8 +68,25 @@ say('', {
   maxLength: '0',
   gradient: ['#FF69B4', '#FF1493']
 });
-
 console.log('')
+
+// FUNCIÓN makeWASocket CORREGIDA
+const makeWASocket = (options) => {
+  const socket = baileysMakeWASocket({
+    ...options,
+    logger: pino({ level: 'silent' }),
+    printQRInTerminal: false,
+    emitOwnEvents: true,
+    defaultQueryTimeoutMs: 60000,
+  })
+  
+  // Añadir decodeJid al socket
+  if (!socket.decodeJid) {
+    socket.decodeJid = global.decodeJid
+  }
+  
+  return socket
+}
 
 const CONFIG_PATH = path.join(__dirname, 'config.js')
 watchFile(CONFIG_PATH, async () => {
@@ -156,7 +187,21 @@ try {
 
 await loadPlugins()
 let handler
-try { ({ handler } = await import('./handler.js')) } catch (e) { console.error('[Handler] Error importando handler:', e.message) }
+try { 
+  const handlerModule = await import('./handler.js')
+  handler = handlerModule.handler || handlerModule.default?.handler || handlerModule.default
+  
+  // Asegurar que handler tenga decodeJid
+  if (typeof handler === 'function') {
+    const originalHandler = handler
+    handler = function(chatUpdate) {
+      this.decodeJid = global.decodeJid
+      return originalHandler.call(this, chatUpdate)
+    }
+  }
+} catch (e) { 
+  console.error('[Handler] Error importando handler:', e.message) 
+}
 
 try {
   const botDisplayName = (config && (config.botName || config.name || global.namebot)) || 'Bot'
@@ -232,15 +277,19 @@ async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState(authDir)
   const method = await chooseMethod(authDir)
   const { version } = await fetchLatestBaileysVersion()
+  
+  // USAR makeWASocket CORREGIDA
   const sock = makeWASocket({
     version,
-    logger: pino({ level: 'silent' }),
     auth: state,
     markOnlineOnConnect: true,
     syncFullHistory: false,
     browser: method === 'code' ? Browsers.macOS('Safari') : ['SuperBot','Chrome','1.0.0']
   })
 
+  // AÑADIR decodeJid AL SOCKET
+  sock.decodeJid = global.decodeJid
+  
   sock.__sessionOpenAt = sock.__sessionOpenAt || 0
 
   // LISTENER DE MENSAJES PRINCIPAL
@@ -512,7 +561,11 @@ async function startBot() {
   })
 }
 
-startBot()
+// INICIAR BOT
+startBot().catch(err => {
+  console.error('❌ Error al iniciar el bot:', err)
+  process.exit(1)
+})
 
 const PLUGIN_DIR = path.join(__dirname, 'plugins')
 let __syntaxErrorFn = null
