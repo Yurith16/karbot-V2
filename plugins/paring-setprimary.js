@@ -1,43 +1,52 @@
-import ws from 'ws';
+// plugins/paring-setprimary.js
 
-const handler = async (m, { conn }) => {
-  // --- VERIFICACIONES DE SEGURIDAD ---
-  // 1. Asegurarse de que la base de datos del chat exista.
+const handler = async (m, { conn, args, usedPrefix, command }) => {
+  // Emoji de reacción inicial
+  await conn.sendMessage(m.chat, { react: { text: '🕑', key: m.key } });
+  
+  // Asegurarse de que la configuración del chat exista
   if (!global.db?.data?.chats?.[m.chat]) {
     return conn.reply(m.chat, `> ⚠︎ Error: La configuración de este grupo no está disponible.`, m);
   }
   const chat = global.db.data.chats[m.chat];
 
-  // --- LÓGICA PRINCIPAL (ahora es segura gracias a la inicialización en index.js) ---
-  const subBots = [...new Set([
-    ...global.conns.filter((conn) => conn?.user && conn?.ws?.socket && conn.ws.socket.readyState !== ws.CLOSED)
-      .map((conn) => conn.user.jid)
-  ])];
+  // Determinar la acción: on, off, o estado actual
+  const action = args[0]?.toLowerCase();
 
-  if (global.conn?.user?.jid && !subBots.includes(global.conn.user.jid)) {
-    subBots.push(global.conn.user.jid);
+  if (!action) {
+    // Si no se proporciona una acción, mostrar el estado actual
+    const status = chat.onlyMainBot ? 'activado' : 'desactivado';
+    await conn.sendMessage(m.chat, { react: { text: '🤖', key: m.key } });
+    return conn.reply(m.chat, `> 🤖 El modo exclusivo (solo Bot Principal) está actualmente **${status}**.\n\n> Usa:\n> • *${usedPrefix + command} on* para activarlo.\n> • *${usedPrefix + command} off* para desactivarlo.`, m);
   }
 
-  const mentionedJid = await m.mentionedJid;
-  const who = mentionedJid[0] ? mentionedJid[0] : m.quoted ? await m.quoted.sender : false;
-
-  if (!who) return conn.reply(m.chat, `> Por favor, menciona a un Socket para hacerlo Bot principal del grupo.`, m);
-  if (!subBots.includes(who)) return conn.reply(m.chat, `> El usuario mencionado no es un Socket de: *${botname}*.`, m);
-  if (chat.primaryBot === who) {
-    return conn.reply(m.chat, `> ☕️ @${who.split`@`[0]} ya esta como Bot primario en este grupo.`, m, { mentions: [who] });
+  if (action === 'on') {
+    if (chat.onlyMainBot) {
+      await conn.sendMessage(m.chat, { react: { text: 'ℹ️', key: m.key } });
+      return conn.reply(m.chat, `> ✅️ El modo exclusivo ya estaba activado.`, m);
+    }
+    chat.onlyMainBot = true;
+    await conn.sendMessage(m.chat, { react: { text: '✅️', key: m.key } });
+    return conn.reply(m.chat, `> 🌱 Modo exclusivo **activado**.\n> A partir de ahora, solo el Bot Principal responderá a los comandos en este grupo.`, m);
   }
 
-  try {
-    chat.primaryBot = who;
-    conn.reply(m.chat, `> ✅️ Se ha establecido a @${who.split`@`[0]} como Bot primario de este grupo.\n> Ahora todos los comandos de este grupo serán ejecutados por @${who.split`@`[0]}.`, m, { mentions: [who] });
-  } catch (e) {
-    console.error(e); // Muestra el error completo en la consola
-    conn.reply(m.chat, `> ⚠︎ Se ha producido un problema.\n> Usa *${usedPrefix}report* para informarlo.\n\n${e.message}`, m);
+  if (action === 'off') {
+    if (!chat.onlyMainBot) {
+      await conn.sendMessage(m.chat, { react: { text: 'ℹ️', key: m.key } });
+      return conn.reply(m.chat, `> ✅️ El modo exclusivo ya estaba desactivado.`, m);
+    }
+    chat.onlyMainBot = false;
+    await conn.sendMessage(m.chat, { react: { text: '✖️', key: m.key } });
+    return conn.reply(m.chat, `> ✖️ Modo exclusivo **desactivado**.\n> Ahora todos los bots (principal y sub-bots) podrán responder.`, m);
   }
+
+  // Si la acción no es 'on' ni 'off'
+  await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } });
+  return conn.reply(m.chat, `> ❌ Opción no válida.\n\n> Usa:\n> • *${usedPrefix + command} on* para activar.\n> • *${usedPrefix + command} off* para desactivar.`, m);
 };
 
 handler.help = ['setprimary'];
-handler.tags = ['serbot'];
+handler.tags = ['group', 'admin'];
 handler.command = ['setprimary'];
 handler.group = true;
 handler.admin = true;
