@@ -20,121 +20,151 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 
         const username = m.pushName || m.sender.split('@')[0] || "Usuario";
         
-        // API principal para sticker animado
-        const primaryApiUrl = `https://apizell.web.id/tools/bratanimate?q=${encodeURIComponent(text)}`;
-        
-        // API secundaria como fallback
-        const fallbackApiUrl = `https://api.siputzx.my.id/api/m/bratvideo?text=${encodeURIComponent(text)}`;
+        // Lista de APIs a probar
+        const apis = [
+            {
+                name: "ZellAPI",
+                url: `https://apizell.web.id/tools/bratanimate?q=${encodeURIComponent(text)}`
+            },
+            {
+                name: "SiputzxAPI", 
+                url: `https://api.siputzx.my.id/api/m/bratvideo?text=${encodeURIComponent(text)}`
+            },
+            {
+                name: "MayAPI",
+                url: `https://mayapi.ooguy.com/bratvideo`,
+                params: { apikey: 'may-051b5d3d', text: text }
+            }
+        ];
 
         let stickerBuffer;
-        let apiUsed = "ZellAPI";
+        let apiUsed = "Desconocida";
 
-        try {
-            console.log('🔍 Probando API principal como JSON primero...');
-            
-            // INTENTO 1: Probar como JSON
+        for (const api of apis) {
             try {
-                const jsonResponse = await axios({
+                console.log(`🔄 Probando API: ${api.name}`);
+                
+                // Hacer la petición sin especificar tipo de respuesta
+                const response = await axios({
                     method: 'GET',
-                    url: primaryApiUrl,
+                    url: api.url,
+                    params: api.params || {},
+                    responseType: 'arraybuffer',
                     timeout: 10000,
                     headers: {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                        'Accept': 'application/json, */*'
+                        'Accept': '*/*'
                     }
                 });
 
-                console.log('📄 Respuesta JSON recibida:', typeof jsonResponse.data);
+                const data = Buffer.from(response.data);
                 
-                if (jsonResponse.data && typeof jsonResponse.data === 'object') {
-                    console.log('📊 Estructura JSON:', Object.keys(jsonResponse.data));
+                // Verificar que tenga datos suficientes
+                if (!data || data.length < 100) {
+                    console.log(`❌ ${api.name}: Datos insuficientes`);
+                    continue;
+                }
+
+                // AUTO-DETECCIÓN DE FORMATO
+                const firstBytes = data.slice(0, 12);
+                
+                // Verificar si es JSON
+                try {
+                    const jsonString = data.toString('utf8');
+                    const jsonData = JSON.parse(jsonString);
                     
-                    // Extraer URL de imagen del JSON (como en brat original)
-                    let imageUrl;
-                    
-                    if (jsonResponse.data.url) {
-                        imageUrl = jsonResponse.data.url;
-                    } else if (jsonResponse.data.result && jsonResponse.data.result.url) {
-                        imageUrl = jsonResponse.data.result.url;
-                    } else if (jsonResponse.data.result && typeof jsonResponse.data.result === 'string') {
-                        imageUrl = jsonResponse.data.result;
-                    }
-                    
-                    if (imageUrl) {
-                        console.log('🖼️ URL encontrada en JSON:', imageUrl);
+                    // Si es JSON válido, buscar URL de imagen
+                    if (jsonData && typeof jsonData === 'object') {
+                        console.log(`✅ ${api.name}: Es JSON, buscando URL...`);
                         
-                        const imageResponse = await axios({
-                            method: 'GET',
-                            url: imageUrl,
-                            responseType: 'arraybuffer',
-                            timeout: 10000,
-                            headers: {
-                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                            }
-                        });
+                        let imageUrl;
                         
-                        stickerBuffer = Buffer.from(imageResponse.data);
-                        console.log('✅ Imagen descargada desde URL JSON:', stickerBuffer.length, 'bytes');
-                    } else {
-                        throw new Error('No se encontró URL en JSON');
+                        // Buscar URL en diferentes estructuras de JSON
+                        if (jsonData.url) {
+                            imageUrl = jsonData.url;
+                        } else if (jsonData.result && jsonData.result.url) {
+                            imageUrl = jsonData.result.url;
+                        } else if (jsonData.result && typeof jsonData.result === 'string') {
+                            imageUrl = jsonData.result;
+                        } else if (jsonData.image) {
+                            imageUrl = jsonData.image;
+                        } else if (jsonData.data && jsonData.data.url) {
+                            imageUrl = jsonData.data.url;
+                        }
+                        
+                        if (imageUrl) {
+                            console.log(`🔗 ${api.name}: URL encontrada: ${imageUrl}`);
+                            
+                            // Descargar la imagen
+                            const imgResponse = await axios({
+                                method: 'GET',
+                                url: imageUrl,
+                                responseType: 'arraybuffer',
+                                timeout: 10000
+                            });
+                            
+                            stickerBuffer = Buffer.from(imgResponse.data);
+                            apiUsed = `${api.name} (JSON)`;
+                            break;
+                        }
                     }
-                } else {
-                    throw new Error('No es JSON válido');
+                } catch (jsonError) {
+                    // No es JSON, continuar con otros formatos
                 }
                 
-            } catch (jsonError) {
-                console.log('❌ No es JSON, probando como imagen directa...');
+                // Verificar si es imagen WEBP (sticker)
+                const isWebP = firstBytes.slice(0, 4).toString() === 'RIFF' && 
+                              firstBytes.slice(8, 12).toString() === 'WEBP';
                 
-                // INTENTO 2: Probar como imagen/video directo
-                const directResponse = await axios({
-                    method: 'GET',
-                    url: primaryApiUrl,
-                    responseType: 'arraybuffer',
-                    timeout: 10000,
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                        'Accept': 'image/*,video/*,*/*'
-                    }
-                });
+                if (isWebP) {
+                    console.log(`✅ ${api.name}: Es WEBP válido`);
+                    stickerBuffer = data;
+                    apiUsed = `${api.name} (WEBP directo)`;
+                    break;
+                }
                 
-                stickerBuffer = Buffer.from(directResponse.data);
-                console.log('✅ Imagen descargada directamente:', stickerBuffer.length, 'bytes');
-            }
-
-            // Verificar que sea válido
-            if (!stickerBuffer || stickerBuffer.length < 100) {
-                throw new Error('Archivo inválido');
-            }
-
-        } catch (primaryError) {
-            console.log('❌ API principal falló:', primaryError.message);
-            console.log('🔄 Intentando con API secundaria...');
-            
-            try {
-                // Probar API secundaria
-                const fallbackResponse = await axios({
-                    method: 'GET',
-                    url: fallbackApiUrl,
-                    responseType: 'arraybuffer',
-                    timeout: 10000,
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                        'Accept': 'image/*,video/*,*/*'
-                    }
-                });
+                // Verificar si es MP4/GIF (video)
+                const isMP4 = firstBytes.slice(4, 8).toString() === 'ftyp';
+                const isGIF = firstBytes.slice(0, 6).toString() === 'GIF89a' || 
+                             firstBytes.slice(0, 6).toString() === 'GIF87a';
                 
-                stickerBuffer = Buffer.from(fallbackResponse.data);
-                apiUsed = "API Secundaria";
-                console.log('✅ Usando API secundaria:', stickerBuffer.length, 'bytes');
-
-            } catch (fallbackError) {
-                throw new Error(`Ambas APIs fallaron`);
+                if (isMP4 || isGIF) {
+                    console.log(`✅ ${api.name}: Es ${isMP4 ? 'MP4' : 'GIF'}`);
+                    stickerBuffer = data;
+                    apiUsed = `${api.name} (${isMP4 ? 'MP4' : 'GIF'})`;
+                    break;
+                }
+                
+                // Verificar si es PNG/JPEG
+                const isPNG = firstBytes.slice(0, 8).toString('hex') === '89504e470d0a1a0a';
+                const isJPEG = firstBytes.slice(0, 3).toString('hex') === 'ffd8ff';
+                
+                if (isPNG || isJPEG) {
+                    console.log(`✅ ${api.name}: Es ${isPNG ? 'PNG' : 'JPEG'}`);
+                    stickerBuffer = data;
+                    apiUsed = `${api.name} (${isPNG ? 'PNG' : 'JPEG'})`;
+                    break;
+                }
+                
+                // Si llegamos aquí, intentar usar los datos tal cual
+                console.log(`⚠️ ${api.name}: Formato no identificado, usando datos crudos`);
+                stickerBuffer = data;
+                apiUsed = `${api.name} (formato desconocido)`;
+                break;
+                
+            } catch (apiError) {
+                console.log(`❌ ${api.name} falló:`, apiError.message);
+                continue;
             }
+        }
+
+        if (!stickerBuffer) {
+            throw new Error('Todas las APIs fallaron');
         }
 
         await m.react('✅️');
 
-        console.log(`🎨 Enviando sticker animado (Fuente: ${apiUsed})`);
+        console.log(`🎨 Enviando sticker animado desde: ${apiUsed}`);
         
         // Enviar sticker con metadata
         await conn.sendMessage(m.chat, {
@@ -159,7 +189,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         
         let errorMessage = '> `❌ ERROR ENCONTRADO`\n\n';
         
-        if (error.message.includes('Ambas APIs fallaron')) {
+        if (error.message.includes('Todas las APIs fallaron')) {
             errorMessage += '> `📝 Todos los servicios están temporalmente no disponibles. Intenta más tarde.`';
         } else if (error.code === 'ECONNABORTED') {
             errorMessage += '> `⏰ Tiempo de espera agotado. Intenta de nuevo.`';
