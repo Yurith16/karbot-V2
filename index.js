@@ -30,8 +30,7 @@ if (!fs.existsSync("./tmp")) {
   fs.mkdirSync("./tmp");
 }
 
-// ... [Resto del código de watchFile y loadPlugins] ...
-
+// Lógica de watchFile y recarga de config
 const CONFIG_PATH = path.join(__dirname, 'config.js')
 watchFile(CONFIG_PATH, async () => {
   try {
@@ -54,6 +53,7 @@ watchFile(CONFIG_PATH, async () => {
   }
 })
 
+// Lógica de carga de plugins
 global.plugins = {}
 global.commandIndex = {}
 async function loadPlugins() {
@@ -120,16 +120,24 @@ try {
 } catch {}
 await loadPlugins()
 
-// --- 🎯 CAMBIO CLAVE 1: Importar startSubBot ---
-let handler, startSubBot
+// --- 🎯 CAMBIO CLAVE: Importación de handler y conector ---
+let handler
 try { 
   const mod = await import('./handler.js');
-  handler = mod.handler;
-  startSubBot = mod.startSubBot; 
+  handler = mod.handler; 
 } catch (e) { 
-  console.error('[Handler] Error importando handler o startSubBot. Asegúrate de exportarlo correctamente:', e.message); 
+  console.error('[Handler] Error importando handler principal:', e.message); 
 }
-// --- FIN CAMBIO CLAVE 1 ---
+
+let startSubBot
+try { 
+  // 🟢 Importamos startSubBot desde el archivo conector correcto
+  const modSub = await import('./pairing-whatsapp.js'); 
+  startSubBot = modSub.startSubBot; 
+} catch (e) { 
+  console.error('[SubBot Connector] Error importando startSubBot. Asegúrate de que pairing-whatsapp.js exista:', e.message); 
+}
+// --- FIN CAMBIO CLAVE ---
 
 try {
   const { say } = cfonts
@@ -174,10 +182,10 @@ async function chooseMethod(authDir) {
 
 const PROCESS_START_AT = Date.now()
 
-// --- 🎯 CAMBIO CLAVE 2: Nueva función para cargar Sub-Bots (CON BARRAS) ---
+// --- Función para cargar Sub-Bots automáticamente ---
 const loadSubBots = async (conn) => {
     if (!startSubBot) {
-        console.error('❌ startSubBot no está disponible. ¿El handler.js está exportando la función correctamente?')
+        console.error('❌ startSubBot no está disponible. El sistema de auto-reconexión de sub-bots falló.')
         return
     }
 
@@ -201,18 +209,17 @@ const loadSubBots = async (conn) => {
         console.log(info)
 
         for (const userName of subBotFolders) {
-            // Llama a startSubBot para cada sesión. Se pasa 'conn' (sock principal).
-            // Se pasa 'null' en lugar de 'm' para evitar enviar mensajes al chat al inicio.
             console.log(chalk.cyan(`   → Reconectando sesión de: ${userName}...`))
+            // Se llama a startSubBot. Se pasa 'null' para el inicio automático (sin mensaje de chat).
             startSubBot(userName, conn, null) 
         }
-        
+
     } catch (e) {
         const errBox = `\n╭─────────────────────────────◉\n│ ${chalk.white.bgRed.bold('     ❌ ERROR AL CARGAR SUB-BOTS    ')}\n│ 「 ⚠️ 」${chalk.yellow('Error:  ')}${chalk.white(e.message || e)}\n╰─────────────────────────────◉\n`
         console.error(errBox)
     }
 }
-// --- FIN CAMBIO CLAVE 2 ---
+// --- FIN loadSubBots ---
 
 async function startBot() {
   const authDir = path.join(__dirname, config.sessionDirName || config.sessionName || global.sessions || 'sessions')
@@ -441,10 +448,10 @@ async function startBot() {
         const userJid = rawId ? jidNormalizedUser(rawId) : 'desconocido'
         const userName = sock?.user?.name || sock?.user?.verifiedName || 'Desconocido'
         console.log(chalk.green.bold(`[ ✅️ ]  Conectado a: ${userName}`))
-        
-        // --- 🎯 CAMBIO CLAVE 3: Iniciar la reconexión de Sub-Bots ---
+
+        // --- 🎯 LLAMADA CLAVE: Iniciar la reconexión de Sub-Bots ---
         await loadSubBots(sock)
-        // --- FIN CAMBIO CLAVE 3 ---
+        // --- FIN LLAMADA CLAVE ---
 
         const jid = rawId
         const num = jid.split(':')[0].replace(/[^0-9]/g,'')
