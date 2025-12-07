@@ -1,9 +1,14 @@
-import ws from 'ws';
+import ws from 'ws'
+import pkg from '@whiskeysockets/baileys'
+const { DisconnectReason } = pkg
+import fs from "fs/promises"
+import path from 'path'
+
 let handler = async(m, { usedPrefix, conn, text }) => {
 const limit = 20
 // --- VERSIÓN ORIGINAL ---
 // Leemos desde global.subbots
-const users = [...new Set([...global.subbots.filter((conn) => conn.user && conn.ws.socket && conn.ws.socket.readyState !== ws.CLOSED).map((conn) => conn)])];
+const users = [...new Set([...global.subbots.filter((conn) => conn.user && conn.ws?.socket && conn.ws.socket.readyState !== ws.CLOSED).map((conn) => conn)])];
 
 function dhms(ms) {
   var segundos = Math.floor(ms / 1000);
@@ -32,51 +37,7 @@ function dhms(ms) {
   return resultado;
 }
 
-  const message = users.map((v, index) => `
-    🍃 \`𝗜𝗧𝗦𝗨𝗞𝗜-𝗦𝗜𝗦𝗧𝗘𝗠 | 𝗕𝗢𝗧 𝗟𝗜𝗦𝗧 : ${index + 1}\`
-
-> 🌱 \`ᴜsᴇʀ :\` +${v.user.jid.replace(/[^0-9]/g, '')}
-> ✐ \`ɴᴏᴍʙʀᴇ: ${v.user.name || 'itsuki-sub'}\`
-> 🕑 \`ᴜᴘᴛɪᴍᴇ: ${v.uptime ? dhms(Date.now() - v.uptime) : "Desconocido"}\`
-`).join('\n┈──────────────── ꒰ 🌟 ꒱\n');
-let warn = `
-    乂 INFO :
-    
-> *[🧃] El número de subbots activos supera el límite de ${limit} por lo que no se mostrará la lista con los tags.*
-`
-const totalUsers = users.length;
-const replyMessage = totalUsers > limit ? warn : (message || 'Aun No Hay Sesiones Activas..');
-const cap = `
-> 💭 Hello +${m.sender.split('@')[0]}! Below is the list of active subbots on Itsuki Nakano
-
-> 💾 Sesiones guardadas : ${await info(jadi)}
-> 🤖 Sesiones Activas : ${totalUsers || '0'}
-
- ${replyMessage.trim()}
- `.trim();
-
-conn.sendMessage(m.chat, {
-                text: cap, 
-                contextInfo: {
-mentionedJid: conn.parseMention(cap),
-                     externalAdReply: {
-                        title: "",
-                        mediaType: 1,
-                        previewType: 0,
-                        renderLargerThumbnail: true,
-                        thumbnail: await (await fetch("https://cdn.russellxz.click/69ae53cb.jpg")).buffer(),
-                        sourceUrl: ''
-                    }
-}}, { quoted: m })
-}
-handler.help = ['botlist']
-handler.tags = ['serbot']
-handler.command = ['bots'] 
-handler.rowner = true
-
-export default handler
-
-import fs from "fs/promises";
+// Función para contar sesiones guardadas
 async function info(path) {
     try {
         const items = await fs.readdir(path);
@@ -86,3 +47,77 @@ async function info(path) {
         return 0;
     }
 }
+
+const jadi = 'Sessions/SubBot'
+
+// Generar lista de bots con la decoración solicitada
+let botList = ''
+users.forEach((v, index) => {
+    const jid = v.user.jid.replace(/[^0-9]/g, '')
+    const name = v.user.name || 'itsuki-sub'
+    const uptime = v.uptime ? dhms(Date.now() - v.uptime) : "0s"
+    
+    botList += `🌷 *Itsuki-V3 Sub*  *[ ${index + 1} ]*\n\n`
+    botList += `🌱 *Tag :* @${jid}\n`
+    botList += `🆔️ *ID :* wa.me/${jid}?text=.menu\n`
+    botList += `🤖 *Bot :* Itsuki-V3 Sub\n`
+    botList += `🕑 *Uptime :* ${uptime}\n`
+    botList += `────────────────\n\n`
+})
+
+const totalUsers = users.length
+const sesionesGuardadas = await info(jadi)
+
+let cap = `# 📚 *Subbots activos : ${totalUsers}/200*\n\n`
+cap += `💾 *Sesiones guardadas:* ${sesionesGuardadas}\n`
+cap += `🟢 *Sesiones activas:* ${totalUsers}\n\n`
+
+// Si hay más del límite, mostrar advertencia
+if (totalUsers > limit) {
+    cap += `> *[🧃] El número de subbots activos supera el límite de ${limit} por lo que no se mostrará la lista con los tags.*\n\n`
+    // Aún así mostrar algunos (los primeros 5)
+    const limitedUsers = users.slice(0, 5)
+    limitedUsers.forEach((v, index) => {
+        const jid = v.user.jid.replace(/[^0-9]/g, '')
+        const name = v.user.name || 'itsuki-sub'
+        const uptime = v.uptime ? dhms(Date.now() - v.uptime) : "0s"
+        
+        cap += `🌷 *Itsuki-V3 Sub*  *[ ${index + 1} ]*\n`
+        cap += `🌱 Tag : @${jid}\n`
+        cap += `🆔️ ID : wa.me/${jid}?text=.menu\n`
+        cap += `🤖 Bot : Itsuki-V3 Sub\n`
+        cap += `🕑 Uptime : ${uptime}\n`
+        cap += `────────────────\n\n`
+    })
+    cap += `*... y ${totalUsers - 5} bots más*`
+} else {
+    cap += botList
+}
+
+// Obtener menciones para los tags
+const mentions = users.map(v => v.user.jid)
+
+// Enviar mensaje
+await conn.sendMessage(m.chat, {
+    text: cap, 
+    mentions: mentions,
+    contextInfo: {
+        mentionedJid: mentions,
+        externalAdReply: {
+            title: "🤖 LISTA DE SUBBOTS ACTIVOS",
+            mediaType: 1,
+            previewType: 0,
+            renderLargerThumbnail: true,
+            thumbnail: await (await fetch("https://cdn.russellxz.click/69ae53cb.jpg")).buffer(),
+            sourceUrl: ''
+        }
+    }
+}, { quoted: m })
+}
+
+handler.help = ['botlist']
+handler.tags = ['serbot']
+handler.command = ['bots', 'listabots', 'subbots'] 
+handler.rowner = true
+
+export default handler
