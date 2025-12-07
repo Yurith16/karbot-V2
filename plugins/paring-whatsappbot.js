@@ -43,7 +43,7 @@ let warn = `
 > *[🧃] El número de subbots activos supera el límite de ${limit} por lo que no se mostrará la lista con los tags.*
 `
 const totalUsers = users.length;
-const replyMessage = totalUsers > limit ? warn : (message || 'No hay w');
+const replyMessage = totalUsers > limit ? warn : (message || 'Aun No Hay Sesiones Activas..');
 const cap = `
 > 💭 \`Hello +${m.sender.split('@')[0]}! Below is the list of active subbots on Itsuki Nakano :\`
 
