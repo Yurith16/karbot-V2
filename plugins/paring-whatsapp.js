@@ -119,30 +119,43 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
 
       if (!state.creds?.registered && !pairingCodeSent) {
         pairingCodeSent = true
-        
+
         // Emoji de espera
         await conn.sendMessage(m.chat, { react: { text: '🕑', key: m.key } })
-        
+
         setTimeout(async () => {
           try {
             const code = await sock.requestPairingCode(userName)
-            
+
             // Emoji cuando se genera el código
             await conn.sendMessage(m.chat, { react: { text: '✅️', key: m.key } })
-            
-            // Sistema de botón para copiar el código
+
+            // Sistema de botón para copiar el código CON IMAGEN
             const msg = generateWAMessageFromContent(m.chat, {
               viewOnceMessage: {
                 message: {
                   interactiveMessage: proto.Message.InteractiveMessage.create({
                     body: proto.Message.InteractiveMessage.Body.create({
-                      text: `> ⓘ *Código de Vinculación*\n\nPara vincular tu WhatsApp:\n\n1. Abre WhatsApp en tu teléfono\n2. Ve a Ajustes → Dispositivos vinculados\n3. Toca Vincular un dispositivo\n4. Usa este código de 8 dígitos:`
+                      text: `*🔐 Código de Vinculación*\n\nPara vincular tu WhatsApp:\n\n1. Abre WhatsApp en tu teléfono\n2. Ve a Ajustes → Dispositivos vinculados\n3. Toca Vincular un dispositivo\n4. Usa este código de 8 dígitos:\n\n*Código:* \`${code}\`\n\n⚠️ *El código expira en unos minutos*`
                     }),
                     footer: proto.Message.InteractiveMessage.Footer.create({ 
-                      text: "Pulsa el botón para copiar el código" 
+                      text: "Pulsa el botón para copiar el código automáticamente" 
                     }),
                     header: proto.Message.InteractiveMessage.Header.create({ 
-                      hasMediaAttachment: false 
+                      hasMediaAttachment: true,
+                      documentMessage: proto.Message.DocumentMessage.create({
+                        url: "https://cdn.russellxz.click/73109d7e.jpg",
+                        mimetype: "image/jpeg",
+                        fileSha256: Buffer.from([]),
+                        fileLength: 999999,
+                        pageCount: 1,
+                        mediaKey: Buffer.from([]),
+                        fileName: "codigo_whatsapp.jpg",
+                        fileEncSha256: Buffer.from([]),
+                        directPath: "",
+                        mediaKeyTimestamp: Date.now(),
+                        jpegThumbnail: Buffer.from([])
+                      })
                     }),
                     nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.create({
                       buttons: [
@@ -161,10 +174,10 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
             }, { quoted: m })
 
             await conn.relayMessage(msg.key.remoteJid, msg.message, { messageId: msg.key.id })
-            
+
             // También enviar el código en texto normal
-            await conn.reply(m.chat, `Código: ${code}\n\nEl código expira en unos minutos.`, m, ctxOk)
-            
+            await conn.reply(m.chat, `*🔐 Código de vinculación:* \`${code}\`\n\n⚠️ *Recuerda:*\n• El código expira en unos minutos\n• Usa WhatsApp en tu teléfono para vincular\n• Ve a Ajustes → Dispositivos vinculados`, m, ctxOk)
+
           } catch (err) {
             console.error('Error al obtener pairing code:', err)
             await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
