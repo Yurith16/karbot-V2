@@ -6,11 +6,11 @@ const path = require('path');
 const { exec } = require('child_process');
 const util = require('util');
 const execAsync = util.promisify(exec);
+const { Sticker, StickerTypes } = require('wa-sticker-formatter');
 
 let handler = async (m, { conn, text, args, usedPrefix, command }) => {
     //Fixieada por ZzawX
     
-    let tempVideoPath;
     let tempStickerPath;
     
     try {
@@ -32,7 +32,6 @@ let handler = async (m, { conn, text, args, usedPrefix, command }) => {
             fs.mkdirSync(tempDir, { recursive: true });
         }
 
-        tempVideoPath = path.join(tempDir, `brat_video_${Date.now()}.mp4`);
         tempStickerPath = path.join(tempDir, `brat_sticker_${Date.now()}.webp`);
 
         const mayApiUrl = `https://mayapi.ooguy.com/brat`;
@@ -50,7 +49,7 @@ let handler = async (m, { conn, text, args, usedPrefix, command }) => {
                     apikey: 'may-f53d1d49',
                     text: text
                 },
-                timeout: 15000,
+                timeout: 10000,
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                     'Accept': 'application/json, */*'
@@ -75,7 +74,7 @@ let handler = async (m, { conn, text, args, usedPrefix, command }) => {
                 method: 'GET',
                 url: imageUrl,
                 responseType: 'arraybuffer',
-                timeout: 20000,
+                timeout: 10000,
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                     'Accept': 'image/webp,image/png,image/jpeg,*/*'
@@ -86,21 +85,15 @@ let handler = async (m, { conn, text, args, usedPrefix, command }) => {
 
             const buffer = imageData;
             const isWebP = buffer.slice(0, 4).toString() === 'RIFF' && buffer.slice(8, 12).toString() === 'WEBP';
-            const isPNG = buffer.slice(0, 8).toString('hex') === '89504e470d0a1a0a';
-            const isJPEG = buffer.slice(0, 3).toString('hex') === 'ffd8ff';
             
-            if (!isWebP && !isPNG && !isJPEG) {
-                throw new Error('La URL no devolvió una imagen válida');
-            }
-
-            if (isWebP) {
-                fs.writeFileSync(tempStickerPath, buffer);
-            } else {
-                const ffmpegCommand = `ffmpeg -i pipe:0 -vcodec libwebp -lossless 0 -compression_level 3 -qscale 50 -loop 0 -preset default -an -vsync 0 -s 512:512 "${tempStickerPath}" -y`;
-                const { stderr } = await execAsync(`echo "${buffer.toString('base64')}" | base64 -d | ${ffmpegCommand}`, { 
-                    timeout: 30000,
+            if (!isWebP) {
+                const ffmpegCommand = `ffmpeg -i pipe:0 -vcodec libwebp -lossless 0 -compression_level 3 -qscale 70 -loop 0 -preset ultrafast -an -vsync 0 -s 512:512 "${tempStickerPath}" -y`;
+                await execAsync(`echo "${buffer.toString('base64')}" | base64 -d | ${ffmpegCommand}`, { 
+                    timeout: 15000,
                     shell: '/bin/bash'
                 });
+            } else {
+                fs.writeFileSync(tempStickerPath, buffer);
             }
 
         } catch (primaryError) {
@@ -109,7 +102,7 @@ let handler = async (m, { conn, text, args, usedPrefix, command }) => {
                     method: 'GET',
                     url: fallbackApiUrl,
                     responseType: 'arraybuffer',
-                    timeout: 15000,
+                    timeout: 10000,
                     maxRedirects: 5,
                     headers: {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -123,9 +116,9 @@ let handler = async (m, { conn, text, args, usedPrefix, command }) => {
                 if (isFallbackWebP) {
                     fs.writeFileSync(tempStickerPath, fallbackBuffer);
                 } else {
-                    const ffmpegCommand = `ffmpeg -i pipe:0 -vcodec libwebp -lossless 0 -compression_level 3 -qscale 50 -loop 0 -preset default -an -vsync 0 -s 512:512 "${tempStickerPath}" -y`;
-                    const { stderr } = await execAsync(`echo "${fallbackBuffer.toString('base64')}" | base64 -d | ${ffmpegCommand}`, { 
-                        timeout: 30000,
+                    const ffmpegCommand = `ffmpeg -i pipe:0 -vcodec libwebp -lossless 0 -compression_level 3 -qscale 70 -loop 0 -preset ultrafast -an -vsync 0 -s 512:512 "${tempStickerPath}" -y`;
+                    await execAsync(`echo "${fallbackBuffer.toString('base64')}" | base64 -d | ${ffmpegCommand}`, { 
+                        timeout: 15000,
                         shell: '/bin/bash'
                     });
                 }
@@ -143,23 +136,32 @@ let handler = async (m, { conn, text, args, usedPrefix, command }) => {
 
         await m.react('✅️');
 
+        const username = m.pushName || m.sender.split('@')[0] || "Usuario";
+        
         const stickerBuffer = fs.readFileSync(tempStickerPath);
-        await conn.sendMessage(m.chat, {
-            sticker: stickerBuffer
-        }, { quoted: m });
+        
+        const stickerMetadata = {
+            pack: `𝐈𝐭𝐬𝐮𝐤𝐢𝐁𝐨𝐭-𝐌𝐃`,
+            author: `𝗦𝗼𝗹𝗶𝗰𝗶𝘁𝗮𝗱𝗼 𝗽𝗼𝗿: ${username}\n𝗖𝗿𝗲𝗮𝗱𝗼𝗿: 𝗟𝗲𝗼𝗗𝗲𝘃`,
+            categories: ['🤣', '🎉'],
+            type: StickerTypes.FULL
+        };
+
+        const sticker = new Sticker(stickerBuffer, stickerMetadata);
+        const stickerWebp = await sticker.toMessage();
+
+        await conn.sendMessage(m.chat, stickerWebp, { quoted: m });
 
         setTimeout(() => {
             try {
-                if (tempVideoPath && fs.existsSync(tempVideoPath)) fs.unlinkSync(tempVideoPath);
                 if (tempStickerPath && fs.existsSync(tempStickerPath)) fs.unlinkSync(tempStickerPath);
             } catch (e) {}
-        }, 30000);
+        }, 10000);
 
     } catch (error) {
         console.error('Error en comando brat:', error);
         
         try {
-            if (tempVideoPath && fs.existsSync(tempVideoPath)) fs.unlinkSync(tempVideoPath);
             if (tempStickerPath && fs.existsSync(tempStickerPath)) fs.unlinkSync(tempStickerPath);
         } catch (cleanError) {}
         
