@@ -1,121 +1,120 @@
-import fetch from 'node-fetch'
+import fetch from "node-fetch";
 
 let handler = async (m, { conn, usedPrefix, command, args }) => {
-try {
-if (!args[0]) {
-return conn.reply(m.chat,
-`> ⓘ USO INCORRECTO
+  try {
+    if (!args[0]) {
+      return conn.reply(m.chat, `𝚄𝚜𝚘: ${usedPrefix + command} 𝚗𝚘𝚖𝚋𝚛𝚎 𝚊𝚙𝚙`, m);
+    }
 
-> ❌ Debes proporcionar el nombre de la aplicación
+    const appName = args.join(" ").toLowerCase();
 
-> 📝 Ejemplos:
-> • ${usedPrefix + command} whatsapp
-> • ${usedPrefix + command} tiktok
-> • ${usedPrefix + command} facebook
-> • ${usedPrefix + command} instagram`, m)
-}
+    // Mensaje inicial con barra de carga
+    let loadingMsg = await conn.sendMessage(
+      m.chat,
+      {
+        text: `⚙️ 𝙸𝙽𝙸𝙲𝙸𝙰𝙽𝙳𝙾...\n[░░░░░░░░░░░░░░░░░░░░] 0%`,
+      },
+      { quoted: m }
+    );
 
-const appName = args.join(' ').toLowerCase()    
+    // ESPERAR antes de comenzar el progreso
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
-// Reacción de búsqueda
-await conn.sendMessage(m.chat, { react: { text: '🔍', key: m.key } })
+    // Progreso más lento y con MENOS actualizaciones
+    const progressSteps = [
+      { percent: 10, text: "𝙲𝙾𝙽𝙴𝙲𝚃𝙰𝙽𝙳𝙾..." },
+      { percent: 25, text: "𝙱𝚄𝚂𝙲𝙰𝙽𝙳𝙾..." },
+      { percent: 40, text: "𝙰𝙽𝙰𝙻𝙸𝚉𝙰𝙽𝙳𝙾..." },
+      { percent: 60, text: "𝙿𝚁𝙾𝙲𝙴𝚂𝙰𝙽𝙳𝙾..." },
+      { percent: 80, text: "𝙳𝙴𝚂𝙲𝙰𝚁𝙶𝙰𝙽𝙳𝙾..." },
+      { percent: 100, text: "𝙲𝙾𝙼𝙿𝙻𝙴𝚃𝙰𝙳𝙾" },
+    ];
 
-const apiUrl = `https://mayapi.ooguy.com/apk?query=${encodeURIComponent(appName)}&apikey=may-f53d1d49`    
-const response = await fetch(apiUrl, {    
-timeout: 30000    
-})    
+    for (let step of progressSteps) {
+      const { percent, text } = step;
+      const totalBars = 20;
+      const filledBars = Math.round((percent / 100) * totalBars);
+      const emptyBars = totalBars - filledBars;
+      const bar = "█".repeat(filledBars) + "░".repeat(emptyBars);
 
-if (!response.ok) {    
-throw new Error(`Error en la API: ${response.status}`)    
-}    
+      try {
+        await conn.sendMessage(m.chat, {
+          text: `⚙️ ${text}\n[${bar}] ${percent}%`,
+          edit: loadingMsg.key,
+        });
+      } catch (e) {
+        console.log("Error editando mensaje:", e.message);
+        // Si hay error, continuar sin editar más
+        break;
+      }
 
-const data = await response.json()    
+      // ESPERAR MÁS ENTRE ACTUALIZACIONES
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
 
-if (!data.status || !data.result) {    
-throw new Error('No se encontró la aplicación')    
-}    
+    // Realizar la búsqueda después de mostrar progreso
+    const apiUrl = `https://mayapi.ooguy.com/apk?query=${encodeURIComponent(
+      appName
+    )}&apikey=may-f53d1d49`;
+    const response = await fetch(apiUrl, { timeout: 30000 });
 
-const appData = data.result    
-const downloadUrl = appData.url    
-const appTitle = appData.title || appName    
-const appVersion = appData.version || 'Última versión'    
-const appSize = appData.size || 'Tamaño no disponible'    
-const appDeveloper = appData.developer || 'Desarrollador no disponible'    
+    if (!response.ok) throw new Error(`𝙴𝚛𝚛𝚘𝚛: ${response.status}`);
 
-// Intentar obtener imagen del APK
-let appImage = null
-try {
-if (appData.icon) {
-appImage = appData.icon
-} else if (appData.image) {
-appImage = appData.image
-} else if (appData.screenshot) {
-appImage = appData.screenshot[0]
-}
-} catch (imgError) {
-console.log('No se pudo obtener imagen del APK')
-}
+    const data = await response.json();
 
-if (!downloadUrl) {    
-throw new Error('No se encontró enlace de descarga')    
-}    
+    if (!data.status || !data.result) throw new Error("𝙽𝚘 𝚜𝚎 𝚎𝚗𝚌𝚘𝚗𝚝𝚛ó 𝚕𝚊 𝚊𝚙𝚙");
 
-// Reacción de encontrado
-await conn.sendMessage(m.chat, { react: { text: '📱', key: m.key } })
+    const appData = data.result;
+    const downloadUrl = appData.url;
+    const appTitle = appData.title || appName;
 
-// Mensaje de aplicación encontrada
-if (appImage) {
-await conn.sendMessage(m.chat, {
-image: { url: appImage },
-caption: `> ⓘ APLICACION ENCONTRADA
+    if (!downloadUrl) throw new Error("𝙽𝚘 𝚑𝚊𝚢 𝚎𝚗𝚕𝚊𝚌𝚎 𝚍𝚎 𝚍𝚎𝚜𝚌𝚊𝚛𝚐𝚊");
 
-> 📱 ${appTitle}
-> 🔄 ${appVersion}
-> 💾 ${appSize}
-> 👨‍💻 ${appDeveloper}`
-}, { quoted: m })
-} else {
-await conn.reply(m.chat,    
-`> ⓘ APLICACION ENCONTRADA
+    // Mostrar mensaje final como en apk2.js
+    try {
+      await conn.sendMessage(m.chat, {
+        text: "✅ 𝙳𝙴𝚂𝙲𝙰𝚁𝙶𝙰 𝙲𝙾𝙼𝙿𝙻𝙴𝚃𝙰\n𝙴𝚗𝚟𝚒𝚊𝚗𝚍𝚘 𝙰𝙿𝙺...",
+        edit: loadingMsg.key,
+      });
+    } catch (e) {
+      // Si falla, no importa
+    }
 
-> 📱 ${appTitle}
-> 🔄 ${appVersion}
-> 💾 ${appSize}
-> 👨‍💻 ${appDeveloper}`, m)    
-}
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
-// Enviar el archivo APK    
-await conn.sendMessage(m.chat, {    
-document: { url: downloadUrl },    
-mimetype: 'application/vnd.android.package-archive',    
-fileName: `${appTitle.replace(/\s+/g, '_')}.apk`,    
-caption: `> ⓘ APK DESCARGADO
+    // Enviar el archivo APK SIN CAPTION
+    await conn.sendMessage(
+      m.chat,
+      {
+        document: { url: downloadUrl },
+        mimetype: "application/vnd.android.package-archive",
+        fileName: `${appTitle.replace(/\s+/g, "_")}.apk`,
+        // SIN CAPTION
+      },
+      { quoted: m }
+    );
+  } catch (error) {
+    console.error("𝙴𝚛𝚛𝚘𝚛 𝙰𝙿𝙺:", error);
 
-> ✅ ${appTitle}
-> ⭐ ${appVersion}
-> 💾 ${appSize}
-> 👨‍💻 ${appDeveloper}`    
-}, { quoted: m })    
+    // Mostrar error en el mensaje de carga
+    if (loadingMsg) {
+      try {
+        await conn.sendMessage(m.chat, {
+          text: `❌ 𝙴𝚛𝚛𝚘𝚛: ${error.message}`,
+          edit: loadingMsg.key,
+        });
+      } catch (e) {
+        await conn.reply(m.chat, `❌ 𝙴𝚛𝚛𝚘𝚛: ${error.message}`, m);
+      }
+    } else {
+      await conn.reply(m.chat, `❌ 𝙴𝚛𝚛𝚘𝚛: ${error.message}`, m);
+    }
+  }
+};
 
-await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
+handler.help = ["apk"];
+handler.tags = ["downloader"];
+handler.command = ["apk", "apkdl", "descargarapk"];
+handler.register = false;
 
-} catch (error) {
-console.error('Error en descarga APK:', error)
-
-await conn.reply(m.chat,    
-`> ⓘ ERROR
-
-> ❌ ${error.message}
-
-> 💡 Intenta con otro nombre`, m)    
-
-await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
-}
-}
-
-handler.help = ['apk']
-handler.tags = ['downloader']
-handler.command = ['apk', 'apkdl', 'descargarapk']
-handler.register = false
-
-export default handler
+export default handler;
