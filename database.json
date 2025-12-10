@@ -2,7 +2,7 @@
   "users": {
     "50496926150@s.whatsapp.net": {
       "name": "⃤⃤⃢🍃™𝑯𝑬𝑹𝑵𝑨𝑵𝑫𝑬𝒁º",
-      "exp": 3170,
+      "exp": 3321,
       "coin": 0,
       "bank": 0,
       "level": 0,
@@ -16,10 +16,11 @@
       "premiumTime": 0,
       "banned": false,
       "bannedReason": "",
-      "commands": 254,
+      "commands": 267,
       "afk": -1,
       "afkReason": "",
-      "warn": 0
+      "warn": 0,
+      "sn": "SN-EQEQ-6065"
     },
     "20015168381136@s.whatsapp.net": {
       "name": "⃤⃤⃢🍃™𝑯𝑬𝑹𝑵𝑨𝑵𝑫𝑬𝒁º",
@@ -64,7 +65,7 @@
       "warn": 0
     },
     "20015168381136@lid": {
-      "exp": 39,
+      "exp": 46,
       "coin": 0,
       "bank": 0,
       "level": 0,
@@ -205,11 +206,35 @@
       "adminmode": false,
       "prefix": null,
       "prefixes": []
+    },
+    "120363425215114115@g.us": {
+      "isBanned": false,
+      "isMute": false,
+      "welcome": false,
+      "sWelcome": "",
+      "sBye": "",
+      "detect": true,
+      "modoadmin": false,
+      "antiLink": true,
+      "nsfw": false,
+      "economy": true,
+      "gacha": true,
+      "antiArabe": true,
+      "antiExtranjero": false,
+      "paisesBloqueados": [],
+      "rootowner": false,
+      "adminmode": false,
+      "prefix": null,
+      "prefixes": []
     }
   },
   "stats": {},
   "settings": {
     "50498729368@s.whatsapp.net": {
+      "self": false,
+      "jadibotmd": true
+    },
+    "50487690812@s.whatsapp.net": {
       "self": false,
       "jadibotmd": true
     }
