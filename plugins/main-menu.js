@@ -100,7 +100,7 @@ let handler = async (m, { conn, usedPrefix: _p }) => {
       'BÚSQUEDA': ['search', 'buscador'],
       'KARBOT-PREM': ['fun', 'premium', 'social', 'custom'],
       'SUB-BOT': ['serbot'],
-      'KARBOT-OWNER': ['owner', 'creador'],
+      'OWNER': ['owner', 'creador'],
     }
 
     // === CONSTRUCCIÓN MENÚ KARBOT ===
@@ -117,7 +117,7 @@ let handler = async (m, { conn, usedPrefix: _p }) => {
 ║ ${KARBOT_EMOJIS.INFO} Hola, ${username}
 ║ ${KARBOT_EMOJIS.INFO} Fecha: ${dateInfo}
 ║
-╰━━━━━━━━━━━━━━━━━━━━╯`.trim()
+╰━━━━━━━━━━━━━━━━━━━╯`.trim()
     menuSections.push(karbotHeader)
 
     // 2. INFO KARBOT COMPACTA (con desarrollador, contacto y prefijo)
@@ -135,7 +135,7 @@ let handler = async (m, { conn, usedPrefix: _p }) => {
 ║ ${KARBOT_EMOJIS.INFO} Prefijo: ${_p}
 ║ ${KARBOT_EMOJIS.INFO} Mode: ${global.opts['self'] ? '🔒 Privado' : '🔓 Público'}
 ║
-╰━━━━━━━━━━━━━━━━━━━━╯`.trim()
+╰━━━━━━━━━━━━━━━━━━━╯`.trim()
     menuSections.push(infoBotSection)
 
     // 3. COMANDOS KARBOT POR CATEGORÍA (cajas más compactas)
@@ -176,27 +176,18 @@ let handler = async (m, { conn, usedPrefix: _p }) => {
           sectionText += `║ ▸ ${_p}${cmd}\n`
         }
         
-        sectionText += `╰━━━━━━━━━━━━━━━━━━━━╯`
+        sectionText += `╰━━━━━━━━━━━━━━━━━━━╯`
         menuSections.push(sectionText)
       }
     }
 
-    // 4. FOOTER SIMPLE (sin créditos extensos)
-    const karbotFooter = 
-`╭━〔 📝 𝚄𝚂𝙾 〕━╮
-║
-║ ▸ Usa: ${_p}comando
-║ ▸ Para ver información detallada
-║ ▸ de cada función disponible
-║
-╰━━━━━━━━━━━━━━━━━━━━╯`.trim()
-    menuSections.push(karbotFooter)
+
 
     // Combinar todo
     const fullText = menuSections.join("\n\n")
 
     // === ENVÍO INTERACTIVO KARBOT ===
-    const localImagePath = join(process.cwd(), 'src', 'menu.jpg')
+    const localImagePath = join(process.cwd(), 'src', 'menu.jpeg')
 
     // Solo botón de ayuda
     const karbotButtons = [
