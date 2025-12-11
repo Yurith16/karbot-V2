@@ -144,7 +144,7 @@ const savetube = {
 function isValidYouTubeUrl(text) {
   try {
     const ytRegex =
-      /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/|music\.youtube\.com\/watch\?v=)/i;
+      /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/|music\.youtube.com\/watch\?v=)/i;
     return ytRegex.test(text);
   } catch (error) {
     return false;
@@ -418,7 +418,7 @@ async function descargarAudioBuffer(audioUrl) {
   }
 }
 
-// Handler principal
+// Handler principal para playdoc
 const handler = async (m, { conn, text, usedPrefix }) => {
   const userId = m.sender;
   const jid = m.chat;
@@ -431,7 +431,7 @@ const handler = async (m, { conn, text, usedPrefix }) => {
   if (!text) {
     return conn.reply(
       jid,
-      `⚙️ *𝙸𝙽𝙶𝚁𝙴𝚂𝙰 𝚄𝙽 𝙰𝚄𝙳𝙸𝙾*\n\n▸ *𝚄𝚜𝚘:* ${usedPrefix}play <𝚗𝚘𝚖𝚋𝚛𝚎/𝚎𝚗𝚕𝚊𝚌𝚎>\n▸ *𝙴𝚓𝚎𝚖𝚙𝚕𝚘:* ${usedPrefix}play 𝚗𝚘𝚖𝚋𝚛𝚎 𝚍𝚎 𝚌𝚊𝚗𝚌𝚒𝚘́𝚗\n▸ *𝙴𝚓𝚎𝚖𝚙𝚕𝚘:* ${usedPrefix}play 𝚑𝚝𝚝𝚙𝚜://𝚢𝚘𝚞𝚝𝚞.𝚋𝚎/𝚊𝚋𝚌𝟷𝟸𝟹`,
+      `⚙️ *𝙸𝙽𝙶𝚁𝙴𝚂𝙰 𝚄𝙽 𝙰𝚄𝙳𝙸𝙾*\n\n▸ *𝚄𝚜𝚘:* ${usedPrefix}playdoc <𝚗𝚘𝚖𝚋𝚛𝚎/𝚎𝚗𝚕𝚊𝚌𝚎>\n▸ *𝙴𝚓𝚎𝚖𝚙𝚕𝚘:* ${usedPrefix}playdoc 𝚗𝚘𝚖𝚋𝚛𝚎 𝚍𝚎 𝚌𝚊𝚗𝚌𝚒𝚘́𝚗\n▸ *𝙴𝚓𝚎𝚖𝚙𝚕𝚘:* ${usedPrefix}playdoc 𝚑𝚝𝚝𝚙𝚜://𝚢𝚘𝚞𝚝𝚞.𝚋𝚎/𝚊𝚋𝚌𝟷𝟸𝟹`,
       m
     );
   }
@@ -439,9 +439,9 @@ const handler = async (m, { conn, text, usedPrefix }) => {
   userDownloads.set(userId, true);
 
   try {
-    // Reacción de búsqueda
+    // Reacción de búsqueda (tuerca ⚙️)
     await conn.sendMessage(jid, {
-      react: { text: "🔍", key: m.key },
+      react: { text: "⚙️", key: m.key },
     });
 
     // Obtener información del video (URL o búsqueda)
@@ -467,11 +467,6 @@ const handler = async (m, { conn, text, usedPrefix }) => {
       { quoted: m }
     );
 
-    // Reacción de procesamiento
-    await conn.sendMessage(jid, {
-      react: { text: "⏳", key: m.key },
-    });
-
     // Obtener enlace de descarga
     const downloadResult = await descargarAudioConFallback(video.url);
 
@@ -482,20 +477,14 @@ const handler = async (m, { conn, text, usedPrefix }) => {
       return conn.reply(jid, `❌ 𝙽𝙾 𝚂𝙴 𝙿𝚄𝙳𝙾 𝙾𝙱𝚃𝙴𝙽𝙴𝚁 𝙴𝙻 𝙰𝚄𝙳𝙸𝙾`, m);
     }
 
-    // Reacción de descarga
-    await conn.sendMessage(jid, {
-      react: { text: "⬇️", key: m.key },
-    });
-
     // Descargar el audio
     const audioData = await descargarAudioBuffer(downloadResult.url);
-    const fileSizeMB = audioData.sizeMB;
 
     if (!audioData.buffer || audioData.sizeBytes === 0) {
       throw new Error("El audio se descargó vacío");
     }
 
-    // Enviar como audio normal (no PTT)
+    // **ENVIAR COMO DOCUMENTO** (MP3 como archivo) - SIN CAPTION
     const fileName = `${video.title
       .replace(/[<>:"/\\|?*]/g, "_")
       .substring(0, 64)}.mp3`;
@@ -503,12 +492,11 @@ const handler = async (m, { conn, text, usedPrefix }) => {
     await conn.sendMessage(
       jid,
       {
-        audio: audioData.buffer,
+        document: audioData.buffer,
         mimetype: "audio/mpeg",
         fileName: fileName,
-        ptt: false,
       },
-      { quoted: m }
+      { quoted: m } // Respondiendo al mensaje del usuario
     );
 
     // Reacción de éxito
@@ -516,7 +504,7 @@ const handler = async (m, { conn, text, usedPrefix }) => {
       react: { text: "✅", key: m.key },
     });
   } catch (error) {
-    console.error("❌ 𝙴𝚛𝚛𝚘𝚛 𝙿𝚕𝚊𝚢:", error);
+    console.error("❌ 𝙴𝚛𝚛𝚘𝚛 𝙿𝚕𝚊𝚢𝚍𝚘𝚌:", error);
 
     await conn.sendMessage(jid, {
       react: { text: "❌", key: m.key },
@@ -528,8 +516,8 @@ const handler = async (m, { conn, text, usedPrefix }) => {
   }
 };
 
-handler.help = ["play"];
+handler.help = ["playdoc"];
 handler.tags = ["downloader"];
-handler.command = ["play", "playaudio"];
+handler.command = ["playdoc"];
 
 export default handler;

@@ -1,66 +1,71 @@
-import { prepareWAMessageMedia, generateWAMessageFromContent, proto } from '@whiskeysockets/baileys'
+import {
+  prepareWAMessageMedia,
+  generateWAMessageFromContent,
+  proto,
+} from "@whiskeysockets/baileys";
 
 let handler = async (m, { conn }) => {
   try {
-    await conn.sendMessage(m.chat, { react: { text: '👑', key: m.key } })
+    await conn.sendMessage(m.chat, { react: { text: "👑", key: m.key } });
 
-    const menuText = `> *@Hola Soy Leo Creador De Itsuki Nakano La Bot Que Estas Usando*\n\n> sᴇʟᴇᴄɪᴏɴᴀ ᴜɴ ᴍᴇᴛᴏᴅᴏ ᴘᴀʀᴀ ᴄᴏᴍᴜɴɪᴄᴀʀᴛᴇ ᴄᴏɴᴍɪɢᴏ 🧃:`
+    const menuText = `👑 *𝙾𝚆𝙽𝙴𝚁 𝙷𝙴𝚁𝙽𝙰𝙽𝙳𝙴𝚉*`;
 
-    const imageUrl = 'https://cdn.russellxz.click/892b3d23.jpg'
+    const imageUrl =
+      "https://image2url.com/images/1765485895849-14e8c32d-ea3e-4b5b-9faf-67f5c8c97757.jpg";
 
+    // Botón único para contacto
     const nativeButtons = [
       {
-        name: 'cta_url',
-        buttonParamsJson: JSON.stringify({ 
-          display_text: '𝙄𝙣𝙨𝙩𝙖𝙜𝙧𝙖𝙢 📸', 
-          url: 'https://www.instagram.com/naayz01s' 
-        })
+        name: "cta_url",
+        buttonParamsJson: JSON.stringify({
+          display_text: "📞 𝙲𝙾𝙽𝚃𝙰𝙲𝚃𝙰𝚁",
+          url: "https://wa.me/50496926150",
+        }),
       },
-      {
-        name: 'cta_url',
-        buttonParamsJson: JSON.stringify({ 
-          display_text: '𝙊𝙬𝙣𝙚𝙧 👑', 
-          url: 'https://wa.me/573187418668' 
-        })
-      },
-      {
-        name: 'cta_url',
-        buttonParamsJson: JSON.stringify({ 
-          display_text: '𝘿𝙤𝙣𝙖𝙘𝙞𝙤𝙣𝙘𝙞𝙩𝙖 ❤️‍🩹', 
-          url: 'https://paypal.me/Erenxs01' 
-        })
-      }
-    ]
+    ];
 
-    // === Imagen desde URL ===
-    const media = await prepareWAMessageMedia({ image: { url: imageUrl } }, { upload: conn.waUploadToServer })
+    // Imagen desde URL
+    const media = await prepareWAMessageMedia(
+      { image: { url: imageUrl } },
+      { upload: conn.waUploadToServer }
+    );
     const header = proto.Message.InteractiveMessage.Header.fromObject({
       hasMediaAttachment: true,
-      imageMessage: media.imageMessage
-    })
+      imageMessage: media.imageMessage,
+    });
 
-    // === Crear mensaje interactivo ===
+    // Crear mensaje interactivo
     const interactiveMessage = proto.Message.InteractiveMessage.fromObject({
-      body: proto.Message.InteractiveMessage.Body.fromObject({ text: menuText }),
+      body: proto.Message.InteractiveMessage.Body.fromObject({
+        text: menuText,
+      }),
       header,
-      nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.fromObject({
-        buttons: nativeButtons
-      })
-    })
+      nativeFlowMessage:
+        proto.Message.InteractiveMessage.NativeFlowMessage.fromObject({
+          buttons: nativeButtons,
+        }),
+    });
 
-    const msg = generateWAMessageFromContent(m.chat, { interactiveMessage }, { userJid: conn.user.jid, quoted: m })
-    await conn.relayMessage(m.chat, msg.message, { messageId: msg.key.id })
-
+    const msg = generateWAMessageFromContent(
+      m.chat,
+      { interactiveMessage },
+      { userJid: conn.user.jid, quoted: m }
+    );
+    await conn.relayMessage(m.chat, msg.message, { messageId: msg.key.id });
   } catch (e) {
-    console.error('❌ Error en el comando owner:', e)
-    await conn.sendMessage(m.chat, {
-      text: `❌ *Error al cargar la información del creador*\n\n🔗 Contacta directamente: https://wa.me/573187418668\n\n⚠️ *Error:* ${e.message}`
-    }, { quoted: m })
+    console.error("❌ Error en owner:", e);
+    await conn.sendMessage(
+      m.chat,
+      {
+        text: `❌ *𝙴𝚁𝚁𝙾𝚁*\n\n▸ 𝙽𝚘 𝚜𝚎 𝚙𝚞𝚍𝚘 𝚌𝚊𝚛𝚐𝚊𝚛 𝚕𝚊 𝚒𝚗𝚏𝚘𝚛𝚖𝚊𝚌𝚒ó𝚗\n▸ 𝙲𝚘𝚗𝚝𝚊𝚌𝚝𝚘: 573187418668`,
+      },
+      { quoted: m }
+    );
   }
-}
+};
 
-handler.help = ['owner', 'creador']
-handler.tags = ['info']
-handler.command = ['owner', 'creador', 'contacto']
+handler.help = ["owner"];
+handler.tags = ["info"];
+handler.command = ["owner", "creador"];
 
-export default handler
+export default handler;

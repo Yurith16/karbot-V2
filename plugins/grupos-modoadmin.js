@@ -1,77 +1,133 @@
 let handler = async (m, { conn, usedPrefix, command, isAdmin, isROwner }) => {
-    if (!m.isGroup) {
-        await m.react('❌')
-        return m.reply('> ⓘ Este comando solo funciona en grupos.')
+  if (!m.isGroup) {
+    await conn.sendMessage(m.chat, { react: { text: "❌", key: m.key } });
+    return conn.reply(
+      m.chat,
+      `╭━━━〔 ❌  𝙺𝙰𝚁𝙱𝙾𝚃 ❌  〕━━━⬣
+║ ❌ 𝙴𝚁𝚁𝙾𝚁: SOLO GRUPOS
+║ ❌ 𝙲𝙾𝙼𝙰𝙽𝙳𝙾: ${usedPrefix}${command}
+║ ❌ 𝙳𝙴𝚂𝙲𝚁𝙸𝙿𝙲𝙸Ó𝙽: Solo funciona en grupos
+╰━━━━━━━━━━━━━━━━━━━━━━⬣`,
+      m
+    );
+  }
+
+  // Verificar jerarquía
+  const isJefe =
+    isROwner || m.sender === m.chat.split("@")[0] + "@s.whatsapp.net";
+
+  if (!isAdmin && !isROwner) {
+    await conn.sendMessage(m.chat, { react: { text: "🚫", key: m.key } });
+    return conn.reply(
+      m.chat,
+      `╭━━━〔 🚫  𝙺𝙰𝚁𝙱𝙾𝚃 🚫  〕━━━⬣
+║ 🚫 𝙴𝚁𝚁𝙾𝚁: NO ERES ADMIN
+║ 🚫 𝙲𝙾𝙼𝙰𝙽𝙳𝙾: ${usedPrefix}${command}
+║ 🚫 𝙳𝙴𝚂𝙲𝚁𝙸𝙿𝙲𝙸Ó𝙽: Solo admins pueden configurar
+╰━━━━━━━━━━━━━━━━━━━━━━⬣`,
+      m
+    );
+  }
+
+  let chat = global.db.data.chats[m.chat];
+  let args = m.text.trim().split(" ").slice(1);
+  let action = args[0]?.toLowerCase();
+
+  if (!action || (action !== "on" && action !== "off")) {
+    await conn.sendMessage(m.chat, { react: { text: "ℹ️", key: m.key } });
+    let status = chat.adminmode ? "🟢 ACTIVO" : "🔴 INACTIVO";
+    return conn.reply(
+      m.chat,
+      `╭━━━〔 ⚙️  𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️  〕━━━⬣
+║ ⚙️ 𝙾𝙿𝙲𝙸Ó𝙽: MODO ADMIN
+║ ⚙️ 𝙴𝚂𝚃𝙰𝙳𝙾: ${status}
+║ ⚙️ 𝙳𝙴𝚂𝙲𝚁𝙸𝙿𝙲𝙸Ó𝙽: Bot solo responde a admins
+║ ⚙️ 𝚄𝚂𝙾: ${usedPrefix}admin <on/off>
+║ ⚙️ 𝙰𝙿𝙻𝙸𝙲𝙰 𝙰: ESTE CHAT
+╰━━━━━━━━━━━━━━━━━━━━━━⬣`,
+      m
+    );
+  }
+
+  if (action === "on") {
+    if (chat.adminmode) {
+      await conn.sendMessage(m.chat, { react: { text: "ℹ️", key: m.key } });
+      return conn.reply(
+        m.chat,
+        `╭━━━〔 ℹ️  𝙺𝙰𝚁𝙱𝙾𝚃 ℹ️  〕━━━⬣
+║ ℹ️ 𝙸𝙽𝙵𝙾: YA ACTIVADO
+║ ℹ️ 𝙲𝙾𝙼𝙰𝙽𝙳𝙾: ${usedPrefix}${command}
+║ ℹ️ 𝙳𝙴𝚂𝙲𝚁𝙸𝙿𝙲𝙸Ó𝙽: El modo admin ya está activo
+╰━━━━━━━━━━━━━━━━━━━━━━⬣`,
+        m
+      );
     }
 
-    // Solo admins o el creador pueden usar este comando
-    if (!isAdmin && !isROwner) {
-        await m.react('🚫')
-        return m.reply('> ⓘ Solo los administradores pueden usar este comando.')
+    // Reacción según jerarquía
+    if (isJefe) {
+      await conn.sendMessage(m.chat, { react: { text: "👑", key: m.key } });
+    } else {
+      await conn.sendMessage(m.chat, { react: { text: "⚙️", key: m.key } });
     }
 
-    let chat = global.db.data.chats[m.chat]
-    let args = m.text.trim().split(' ').slice(1)
-    let action = args[0]?.toLowerCase()
+    chat.adminmode = true;
+    await conn.sendMessage(m.chat, { react: { text: "✅", key: m.key } });
 
-    if (!action || (action !== 'on' && action !== 'off')) {
-        let status = chat.adminmode ? '🟢 ACTIVADO' : '🔴 DESACTIVADO'
-        await m.react('ℹ️')
-        return m.reply(`╭─「 🛡️ *MODO ADMIN* 🛡️ 」
-│ 
-│ 📊 Estado actual: ${status}
-│ 
-│ 💡 *Uso del comando:*
-│ ├ ${usedPrefix}admin on
-│ └ ${usedPrefix}admin off
-│ 
-│ 📝 *Descripción:*
-│ Cuando está ACTIVADO, el bot solo
-│ responderá a mensajes de administradores
-│ en este grupo.
-╰─◉`.trim())
+    const userMention = isJefe ? "👑 𝙹𝙴𝙵𝙴" : `@${m.sender.split("@")[0]}`;
+    return conn.reply(
+      m.chat,
+      `╭━━━〔 ✅  𝙺𝙰𝚁𝙱𝙾𝚃 ✅  〕━━━⬣
+║ ✅ 𝙾𝙿𝙲𝙸Ó𝙽: MODO ADMIN ACTIVADO
+║ ✅ 𝙲𝙾𝙽𝙵𝙸𝙶𝚄𝚁𝙰𝙳𝙾 𝙿𝙾𝚁: ${userMention}
+║ ✅ 𝙴𝚂𝚃𝙰𝙳𝙾: 🟢 SOLO ADMINS
+║ ✅ 𝙳𝙴𝚂𝙲𝚁𝙸𝙿𝙲𝙸Ó𝙽: Bot solo responde a admins
+║ ✅ 𝙰𝙿𝙻𝙸𝙲𝙰 𝙰: ESTE CHAT
+╰━━━━━━━━━━━━━━━━━━━━━━⬣`,
+      m
+    );
+  } else if (action === "off") {
+    if (!chat.adminmode) {
+      await conn.sendMessage(m.chat, { react: { text: "ℹ️", key: m.key } });
+      return conn.reply(
+        m.chat,
+        `╭━━━〔 ℹ️  𝙺𝙰𝚁𝙱𝙾𝚃 ℹ️  〕━━━⬣
+║ ℹ️ 𝙸𝙽𝙵𝙾: YA INACTIVO
+║ ℹ️ 𝙲𝙾𝙼𝙰𝙽𝙳𝙾: ${usedPrefix}${command}
+║ ℹ️ 𝙳𝙴𝚂𝙲𝚁𝙸𝙿𝙲𝙸Ó𝙽: El modo admin ya está inactivo
+╰━━━━━━━━━━━━━━━━━━━━━━⬣`,
+        m
+      );
     }
 
-    if (action === 'on') {
-        if (chat.adminmode) {
-            await m.react('ℹ️')
-            return m.reply('> ⓘ El modo *Admin* ya está activado en este grupo.')
-        }
-        chat.adminmode = true
-        await m.react('✅')
-        m.reply(`╭─「 🛡️ *MODO ADMIN ACTIVADO* 🛡️ 」
-│ 
-│ ✅ *Configuración aplicada:*
-│ ├ El bot ahora solo responderá
-│ └ a los administradores del grupo.
-│ 
-│ 🔒 *Modo exclusivo activado*
-│ 📍 Grupo: ${m.chat}
-╰─◉`.trim())
-
-    } else if (action === 'off') {
-        if (!chat.adminmode) {
-            await m.react('ℹ️')
-            return m.reply('> ⓘ El modo *Admin* ya está desactivado en este grupo.')
-        }
-        chat.adminmode = false
-        await m.react('✅')
-        m.reply(`╭─「 🛡️ *MODO ADMIN DESACTIVADO* 🛡️ 」
-│ 
-│ ✅ *Configuración aplicada:*
-│ ├ El bot ahora responderá
-│ └ a todos los usuarios.
-│ 
-│ 🔓 *Modo exclusivo desactivado*
-│ 📍 Grupo: ${m.chat}
-╰─◉`.trim())
+    // Reacción según jerarquía
+    if (isJefe) {
+      await conn.sendMessage(m.chat, { react: { text: "👑", key: m.key } });
+    } else {
+      await conn.sendMessage(m.chat, { react: { text: "⚙️", key: m.key } });
     }
-}
 
-handler.help = ['admin on', 'admin off']
-handler.tags = ['group']
-handler.command = /^(admin)$/i
-handler.group = true
-handler.admin = true
+    chat.adminmode = false;
+    await conn.sendMessage(m.chat, { react: { text: "✅", key: m.key } });
 
-export default handler
+    const userMention = isJefe ? "👑 𝙹𝙴𝙵𝙴" : `@${m.sender.split("@")[0]}`;
+    return conn.reply(
+      m.chat,
+      `╭━━━〔 ✅  𝙺𝙰𝚁𝙱𝙾𝚃 ✅  〕━━━⬣
+║ ✅ 𝙾𝙿𝙲𝙸Ó𝙽: MODO ADMIN DESACTIVADO
+║ ✅ 𝙲𝙾𝙽𝙵𝙸𝙶𝚄𝚁𝙰𝙳𝙾 𝙿𝙾𝚁: ${userMention}
+║ ✅ 𝙴𝚂𝚃𝙰𝙳𝙾: 🔴 TODOS LOS USUARIOS
+║ ✅ 𝙳𝙴𝚂𝙲𝚁𝙸𝙿𝙲𝙸Ó𝙽: Bot responde a todos
+║ ✅ 𝙰𝙿𝙻𝙸𝙲𝙰 𝙰: ESTE CHAT
+╰━━━━━━━━━━━━━━━━━━━━━━⬣`,
+      m
+    );
+  }
+};
+
+handler.help = ["admin <on/off>"];
+handler.tags = ["grupo"];
+handler.command = /^(admin)$/i;
+handler.group = true;
+handler.admin = true;
+
+export default handler;

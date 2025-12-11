@@ -32,10 +32,10 @@ handler.all = async function (m) {
   global.packsticker = ``;
 
   global.iconos = [
-    "https://files.catbox.moe/bu3hd2.jpg",
-    "https://files.catbox.moe/0wc9q3.jpg",
-    "https://files.catbox.moe/b5ri75.jpg",
-    "https://files.catbox.moe/vnbwyw.jpg",
+    "https://image2url.com/images/1765486012290-7e2d4538-c0d4-487b-9410-9b21ab56387f.jpg",
+    "https://image2url.com/images/1765486043596-c617bb6f-828d-4dbb-87e2-ea5c0ddaebed.jpg",
+    "https://image2url.com/images/1765486068515-15617e4f-aaba-4dff-b4da-0ba106f75cfd.jpg",
+    "https://image2url.com/images/1765486087799-4050fc16-aeff-4200-b499-20a5538148a7.jpg",
   ];
   global.icono =
     global.iconos[Math.floor(Math.random() * global.iconos.length)];
@@ -43,11 +43,11 @@ handler.all = async function (m) {
   global.wm = "© 𝙷𝙴𝚁𝙽𝙰𝙽𝙳𝙴𝚉";
   global.wm3 = "⚙️  𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️";
   global.author = "𝙷𝙴𝚁𝙽𝙰𝙽𝙳𝙴𝚉";
-  global.dev = "© 𝙾𝚆𝙽𝙴𝚁-𝙷𝙴𝚁𝙽𝙰𝙽𝙳𝙴𝚉";
+  global.dev = "";
   global.textbot = "𝙺𝙰𝚁𝙱𝙾𝚃-𝙸𝙰";
   global.etiqueta = "@𝙷𝙴𝚁𝙽𝙰𝙽𝙳𝙴𝚉";
   global.gt = "𝙺𝙰𝚁𝙱𝙾𝚃";
-  global.me = "⚙️  𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️";
+  global.me = "⚙️ 𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️";
 
   global.fkontak = {
     key: {

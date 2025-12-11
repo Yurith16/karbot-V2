@@ -1,64 +1,78 @@
-let handler = async (m, { conn, args, usedPrefix, command, isAdmin, isBotAdmin, participants }) => {
-  const ctxErr = (global.rcanalx || {})
-  const ctxWarn = (global.rcanalw || {})
-  const ctxOk = (global.rcanalr || {})
+let handler = async (
+  m,
+  { conn, args, usedPrefix, command, isAdmin, isBotAdmin, participants }
+) => {
+  if (!isAdmin) {
+    await conn.sendMessage(m.chat, { react: { text: "🚫", key: m.key } });
+    return conn.reply(
+      m.chat,
+      "🚫 *𝙽𝙾 𝙴𝚁𝙴𝚂 𝙰𝙳𝙼𝙸𝙽*\n\n▸ 𝚂𝚘𝚕𝚘 𝚕𝚘𝚜 𝚊𝚍𝚖𝚒𝚗𝚜 𝚙𝚞𝚎𝚍𝚎𝚗 𝚞𝚜𝚊𝚛 𝚎𝚜𝚝𝚎 𝚌𝚘𝚖𝚊𝚗𝚍𝚘",
+      m
+    );
+  }
 
   const isClose = {
-    'open': 'not_announcement',
-    'close': 'announcement',
-    'abierto': 'not_announcement',
-    'cerrado': 'announcement',
-    'abrir': 'not_announcement',
-    'cerrar': 'announcement',
-    'desbloquear': 'unlocked',
-    'bloquear': 'locked'
-  }[(args[0] || '').toLowerCase()]
+    abrir: "not_announcement",
+    cerrar: "announcement",
+    open: "not_announcement",
+    close: "announcement",
+  }[(args[0] || "").toLowerCase()];
 
-  // 🟡 Si no se pone argumento → mostrar botones
+  // 🟡 Mostrar botones si no hay argumento
   if (isClose === undefined) {
-    const texto = `⚙️ *Configuración del grupo*\n\nSelecciona una opción para administrar el grupo:`
+    await conn.sendMessage(m.chat, { react: { text: "⚙️", key: m.key } });
+
+    const texto = `⚙️ *𝙲𝙾𝙽𝙵𝙸𝙶𝚄𝚁𝙰𝚁 𝙶𝚁𝚄𝙿𝙾*\n\n▸ 𝚂𝚎𝚕𝚎𝚌𝚌𝚒𝚘𝚗𝚊 𝚞𝚗𝚊 𝚘𝚙𝚌𝚒ó𝚗:`;
 
     const botones = [
-      { buttonId: `${usedPrefix + command} abrir`, buttonText: { displayText: '🔓 Abrir grupo' }, type: 1 },
-      { buttonId: `${usedPrefix + command} cerrar`, buttonText: { displayText: '🔒 Cerrar grupo' }, type: 1 },
-      { buttonId: `${usedPrefix + command} bloquear`, buttonText: { displayText: '🚫 Bloquear grupo' }, type: 1 },
-      { buttonId: `${usedPrefix + command} desbloquear`, buttonText: { displayText: '✅ Desbloquear grupo' }, type: 1 }
-    ]
+      {
+        buttonId: `${usedPrefix + command} cerrar`,
+        buttonText: { displayText: "🔒 𝙲𝙴𝚁𝚁𝙰𝚁" },
+        type: 1,
+      },
+      {
+        buttonId: `${usedPrefix + command} abrir`,
+        buttonText: { displayText: "🔓 𝙰𝙱𝚁𝙸𝚁" },
+        type: 1,
+      },
+    ];
 
-    await conn.sendMessage(m.chat, {
-      text: texto,
-      footer: 'Elige una opción para continuar.',
-      buttons: botones,
-      headerType: 4
-    }, { quoted: m })
+    await conn.sendMessage(
+      m.chat,
+      {
+        text: texto,
+        footer: "KARBOT • 𝙰𝙳𝙼𝙸𝙽",
+        buttons: botones,
+        headerType: 4,
+      },
+      { quoted: m }
+    );
 
-    return
+    return;
   }
 
   // 🟢 Ejecutar la acción elegida
-  await conn.groupSettingUpdate(m.chat, isClose)
+  await conn.sendMessage(m.chat, { react: { text: "⚙️", key: m.key } });
+  await conn.groupSettingUpdate(m.chat, isClose);
 
-  let message = ''
-  if (args[0].toLowerCase() === 'cerrar' || args[0].toLowerCase() === 'close' || args[0].toLowerCase() === 'cerrado') {
-    message = '🔒 *El grupo ha sido cerrado correctamente*'
-  } else if (args[0].toLowerCase() === 'abrir' || args[0].toLowerCase() === 'open' || args[0].toLowerCase() === 'abierto') {
-    message = '🔓 *El grupo ha sido abierto correctamente*'
-  } else if (args[0].toLowerCase() === 'bloquear' || args[0].toLowerCase() === 'locked') {
-    message = '🚫 *El grupo ha sido bloqueado correctamente*'
-  } else if (args[0].toLowerCase() === 'desbloquear' || args[0].toLowerCase() === 'unlocked') {
-    message = '✅ *El grupo ha sido desbloqueado correctamente*'
+  let message = "";
+  if (args[0].toLowerCase() === "cerrar" || args[0].toLowerCase() === "close") {
+    await conn.sendMessage(m.chat, { react: { text: "🔒", key: m.key } });
+    message =
+      "✅ *𝙶𝚁𝚄𝙿𝙾 𝙲𝙴𝚁𝚁𝙰𝙳𝙾*\n\n▸ 𝙴𝚕 𝚐𝚛𝚞𝚙𝚘 𝚊𝚑𝚘𝚛𝚊 𝚎𝚜𝚝á 𝚌𝚎𝚛𝚛𝚊𝚍𝚘\n▸ 𝚂𝚘𝚕𝚘 𝚕𝚘𝚜 𝚊𝚍𝚖𝚒𝚗𝚜 𝚙𝚞𝚎𝚍𝚎𝚗 𝚎𝚗𝚟𝚒𝚊𝚛 𝚖𝚎𝚗𝚜𝚊𝚓𝚎𝚜";
   } else {
-    message = '✅ *Configurado correctamente*'
+    await conn.sendMessage(m.chat, { react: { text: "🔓", key: m.key } });
+    message =
+      "✅ *𝙶𝚁𝚄𝙿𝙾 𝙰𝙱𝙸𝙴𝚁𝚃𝙾*\n\n▸ 𝙴𝚕 𝚐𝚛𝚞𝚙𝚘 𝚊𝚑𝚘𝚛𝚊 𝚎𝚜𝚝á 𝚊𝚋𝚒𝚎𝚛𝚝𝚘\n▸ 𝚃𝚘𝚍𝚘𝚜 𝚙𝚞𝚎𝚍𝚎𝚗 𝚎𝚗𝚟𝚒𝚊𝚛 𝚖𝚎𝚗𝚜𝚊𝚓𝚎𝚜";
   }
 
-  conn.reply(m.chat, message, m, ctxOk)
-  // await m.react(done) // Descomenta esta línea si tienes definida la variable 'done'
-}
+  return conn.reply(m.chat, message, m);
+};
 
-handler.help = ['group abrir / cerrar']
-handler.tags = ['grupo']
-handler.command = ['group', 'grupo', 'cerrar', 'abrir']
-handler.admin = true
-handler.botAdmin = true
+handler.help = ["group <abrir/cerrar>"];
+handler.tags = ["grupo"];
+handler.command = ["group", "grupo", "cerrar", "abrir"];
+handler.admin = true;
+handler.botAdmin = true;
 
-export default handler
+export default handler;

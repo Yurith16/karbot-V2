@@ -170,6 +170,91 @@ try {
   console.error("[Handler] Error importando handler:", e.message);
 }
 
+// IMPORTAR LOS HANDLERS DE PLAY PARA LOS BOTONES
+let playHandlers = null;
+async function loadPlayHandlers() {
+  try {
+    const playModule = await import("./plugins/downloader/play.js");
+    playHandlers = {
+      audioHandler: playModule.audioHandler,
+      audioDocHandler: playModule.audioDocHandler,
+      videoHandler: playModule.videoHandler,
+      videoDocHandler: playModule.videoDocHandler,
+    };
+  } catch (e) {
+    console.error("[PlayHandlers] Error cargando handlers:", e.message);
+    playHandlers = null;
+  }
+}
+await loadPlayHandlers();
+
+// MANEJADOR DE BOTONES INTERACTIVOS - CORREGIDO
+async function handleButtonResponse(sock, message) {
+  try {
+    // Detectar templateButtonReplyMessage (lo que muestran tus logs)
+    if (message?.message?.templateButtonReplyMessage?.selectedId) {
+      const buttonId = message.message.templateButtonReplyMessage.selectedId;
+
+      // Extraer comando y URL del botón (formato: ".audio https://youtube.com/...")
+      const [command, ...urlParts] = buttonId.split(" ");
+      const url = urlParts.join(" ");
+
+      if (!url || !command) return;
+
+      // Crear objeto de mensaje falso para los handlers
+      const fakeMsg = {
+        ...message,
+        key: {
+          ...message.key,
+          id: message.key.id + "-btn",
+        },
+        text: buttonId,
+        sender: message.key.participant || message.key.remoteJid,
+        chat: message.key.remoteJid,
+      };
+
+      const conn = {
+        sendMessage: sock.sendMessage.bind(sock),
+        reply: (jid, text, quoted) =>
+          sock.sendMessage(jid, { text }, { quoted }),
+      };
+
+      const usedPrefix = config.prefix?.[0] || ".";
+
+      // Ejecutar handler según el comando del botón
+      if (playHandlers) {
+        if (command.includes("audio") && !command.includes("audiodoc")) {
+          await playHandlers.audioHandler(fakeMsg, {
+            conn,
+            text: url,
+            usedPrefix,
+          });
+        } else if (command.includes("audiodoc")) {
+          await playHandlers.audioDocHandler(fakeMsg, {
+            conn,
+            text: url,
+            usedPrefix,
+          });
+        } else if (command.includes("video") && !command.includes("videodoc")) {
+          await playHandlers.videoHandler(fakeMsg, {
+            conn,
+            text: url,
+            usedPrefix,
+          });
+        } else if (command.includes("videodoc")) {
+          await playHandlers.videoDocHandler(fakeMsg, {
+            conn,
+            text: url,
+            usedPrefix,
+          });
+        }
+      }
+    }
+  } catch (error) {
+    console.error("[Botones] Error manejando botón:", error);
+  }
+}
+
 try {
   const { say } = cfonts;
   const botDisplayName =
@@ -299,7 +384,7 @@ async function startBot() {
 
   sock.__sessionOpenAt = sock.__sessionOpenAt || 0;
 
-  // LISTENER DE MENSAJES PRINCIPAL
+  // LISTENER DE MENSAJES PRINCIPAL (CON MANEJO DE BOTONES CORREGIDO)
   sock.ev.on("messages.upsert", async (chatUpdate) => {
     try {
       const since = sock.__sessionOpenAt || PROCESS_START_AT;
@@ -318,6 +403,16 @@ async function startBot() {
         }
       });
       if (!fresh.length) return;
+
+      // PRIMERO: Manejar respuestas de botones (templateButtonReplyMessage)
+      for (const message of fresh) {
+        if (message?.message?.templateButtonReplyMessage?.selectedId) {
+          await handleButtonResponse(sock, message);
+          continue;
+        }
+      }
+
+      // SEGUNDO: Pasar al handler normal
       const filteredUpdate = { ...chatUpdate, messages: fresh };
       await handler?.call(sock, filteredUpdate);
     } catch (e) {
@@ -719,10 +814,20 @@ global.reload = async (_ev, filename) => {
     console.error("[ReloadPlugin]", e.message || e);
   }
 };
+
+// Recargar handlers de play cuando se recargue el plugin
+global.reloadPlayHandlers = async () => {
+  await loadPlayHandlers();
+  console.log(chalk.green("[Play] Handlers recargados"));
+};
+
 try {
   fs.watch(PLUGIN_DIR, { recursive: false }, (ev, fname) => {
     if (!fname) return;
     global.reload(ev, fname).catch(() => {});
+    if (fname.includes("play.js")) {
+      global.reloadPlayHandlers().catch(() => {});
+    }
   });
 } catch {}
 
