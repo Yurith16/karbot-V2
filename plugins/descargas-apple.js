@@ -1,337 +1,329 @@
-import fs from 'node:fs'
-import path from 'node:path'
-import axios from 'axios'
-import fetch from 'node-fetch'
-import { pipeline } from 'node:stream/promises'
-import { wrapper } from 'axios-cookiejar-support'
-import { CookieJar } from 'tough-cookie'
+import fs from "node:fs";
+import path from "node:path";
+import axios from "axios";
+import { pipeline } from "node:stream/promises";
+import { wrapper } from "axios-cookiejar-support";
+import { CookieJar } from "tough-cookie";
 
-const BASE_URL = 'https://aaplmusicdownloader.com'
-const API_PATH = '/api/composer/swd.php'
-const SONG_PAGE = '/song.php'
-const DEFAULT_MIME = 'application/x-www-form-urlencoded; charset=UTF-8'
-const DEFAULT_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'
-const FALLBACK_FILENAME = 'apple-track.m4a'
-const CACHE_TTL_MS = 10 * 60 * 1000
+const BASE_URL = "https://aaplmusicdownloader.com";
+const API_PATH = "/api/composer/swd.php";
+const SONG_PAGE = "/song.php";
+const DEFAULT_MIME = "application/x-www-form-urlencoded; charset=UTF-8";
+const DEFAULT_USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36";
+const FALLBACK_FILENAME = "audio.m4a";
 
-const appleCache = global.__APPLE_SEARCH_CACHE__ || new Map()
-global.__APPLE_SEARCH_CACHE__ = appleCache
-
-function buildKey(chatId, messageId) {
-  return `${chatId}::${messageId}`
-}
-
-function cleanupExpired() {
-  const now = Date.now()
-  for (const [key, entry] of appleCache.entries()) {
-    if (!entry?.createdAt || now - entry.createdAt > CACHE_TTL_MS) {
-      appleCache.delete(key)
-    }
-  }
-}
-
-function getAppleResults(chatId, messageId) {
-  if (!chatId || !messageId) return null
-  cleanupExpired()
-  const entry = appleCache.get(buildKey(chatId, messageId))
-  if (!entry) return null
-  if (Date.now() - entry.createdAt > CACHE_TTL_MS) {
-    appleCache.delete(buildKey(chatId, messageId))
-    return null
-  }
-  return entry.results
-}
-
-function pickAppleResult(chatId, messageId, index) {
-  const results = getAppleResults(chatId, messageId)
-  if (!results) return null
-  if (!Number.isInteger(index) || index < 1 || index > results.length) return null
-  return results[index - 1]
-}
-
-function extractQuotedMeta(m) {
-  if (!m || !m.quoted) return { chatId: null, messageId: null }
-  const quoted = m.quoted.fakeObj || m.quoted
-  const key = quoted?.key || {}
-  const messageId = key.id || quoted?.id || null
-  const chatId = key.remoteJid || quoted?.chat || m.chat || null
-  return { chatId, messageId }
-}
-
-const { promises: fsp } = fs
-const jar = new CookieJar()
+const { promises: fsp } = fs;
+const jar = new CookieJar();
 const client = wrapper(
   axios.create({
     baseURL: BASE_URL,
     jar,
     withCredentials: true,
     headers: {
-      'user-agent': DEFAULT_USER_AGENT,
-      accept: 'application/json, text/javascript, */*; q=0.01',
-      referer: `${BASE_URL}${SONG_PAGE}`
-    }
+      "user-agent": DEFAULT_USER_AGENT,
+      accept: "application/json, text/javascript, */*; q=0.01",
+      referer: `${BASE_URL}${SONG_PAGE}`,
+    },
   })
-)
+);
 
-function parseArgs(tokens = []) {
-  const options = {
-    songName: '',
-    artistName: '',
-    appleUrl: '',
-    quality: 'm4a',
-    zipDownload: false,
-    token: 'none',
-    outputPath: null,
-    skipDownload: false
-  }
-  const leftovers = []
-  for (let i = 0; i < tokens.length; i += 1) {
-    const token = tokens[i]
-    if (!token) continue
-    switch (token.toLowerCase()) {
-      case '--song':
-      case '-s':
-        options.songName = tokens[i + 1] ?? ''
-        i += 1
-        break
-      case '--artist':
-      case '-a':
-        options.artistName = tokens[i + 1] ?? ''
-        i += 1
-        break
-      case '--url':
-      case '--apple-url':
-        options.appleUrl = tokens[i + 1] ?? ''
-        i += 1
-        break
-      case '--quality':
-      case '-q':
-        options.quality = tokens[i + 1] ?? 'm4a'
-        i += 1
-        break
-      case '--zip':
-        options.zipDownload = true
-        break
-      case '--token':
-        options.token = tokens[i + 1] ?? 'none'
-        i += 1
-        break
-      case '--out':
-      case '-o':
-        options.outputPath = tokens[i + 1] ?? null
-        i += 1
-        break
-      case '--skip-download':
-        options.skipDownload = true
-        break
-      default:
-        leftovers.push(token)
-        break
+async function searchAppleMusic(query) {
+  try {
+    const searchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(
+      query
+    )}&media=music&limit=5`;
+    const response = await axios.get(searchUrl, {
+      headers: {
+        "User-Agent": DEFAULT_USER_AGENT,
+      },
+    });
+
+    if (!response.data || !response.data.results) {
+      throw new Error("𝚂𝚒𝚗 𝚛𝚎𝚜𝚞𝚕𝚝𝚊𝚍𝚘𝚜");
     }
+
+    return response.data.results.map((track) => ({
+      trackId: track.trackId,
+      title: track.trackName || "𝙳𝚎𝚜𝚌𝚘𝚗𝚘𝚌𝚒𝚍𝚘",
+      artist: track.artistName || "𝙳𝚎𝚜𝚌𝚘𝚗𝚘𝚌𝚒𝚍𝚘",
+      album: track.collectionName || "𝙳𝚎𝚜𝚌𝚘𝚗𝚘𝚌𝚒𝚍𝚘",
+      artwork: track.artworkUrl100?.replace("100x100", "600x600") || null,
+      appleUrl:
+        track.trackViewUrl ||
+        `https://music.apple.com/us/album/${track.collectionId}?i=${track.trackId}`,
+    }));
+  } catch (error) {
+    throw new Error(`𝙱𝚞́𝚜𝚚𝚞𝚎𝚍𝚊 𝚏𝚊𝚕𝚕𝚘́: ${error.message}`);
   }
-  if (!options.appleUrl) {
-    const candidate = leftovers.find(value => /^https?:\/\//i.test(value))
-    if (candidate) options.appleUrl = candidate
-  }
-  if (!options.songName) options.songName = leftovers[0] && !/^https?:\/\//i.test(leftovers[0]) ? leftovers[0] : 'Unknown'
-  return options
 }
 
 async function warmUpSession() {
   await client.get(SONG_PAGE, {
     headers: {
-      accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-      'accept-language': 'en-US,en;q=0.9'
+      accept:
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+      "accept-language": "en-US,en;q=0.9",
     },
-    params: { cacheBust: Date.now() }
-  })
+    params: { cacheBust: Date.now() },
+  });
 }
 
-function buildPayload({ songName, artistName, appleUrl, quality, zipDownload, token }) {
-  const payload = new URLSearchParams()
-  payload.set('song_name', songName)
-  payload.set('artist_name', artistName)
-  payload.set('url', appleUrl)
-  payload.set('token', token)
-  payload.set('zip_download', String(Boolean(zipDownload)))
-  payload.set('quality', quality)
-  return payload.toString()
+function buildPayload({
+  songName,
+  artistName,
+  appleUrl,
+  quality,
+  zipDownload,
+  token,
+}) {
+  const payload = new URLSearchParams();
+  payload.set("song_name", songName);
+  payload.set("artist_name", artistName);
+  payload.set("url", appleUrl);
+  payload.set("token", token);
+  payload.set("zip_download", String(Boolean(zipDownload)));
+  payload.set("quality", quality);
+  return payload.toString();
 }
 
 async function requestDownloadLink(params) {
-  const body = buildPayload(params)
+  const body = buildPayload(params);
   const response = await client.post(API_PATH, body, {
     headers: {
-      'content-type': DEFAULT_MIME,
-      'x-requested-with': 'XMLHttpRequest',
-      origin: BASE_URL
-    }
-  })
-  if (!response.data || response.data.status !== 'success' || !response.data.dlink) {
-    throw new Error(`API responded without a download link: ${JSON.stringify(response.data)}`)
+      "content-type": DEFAULT_MIME,
+      "x-requested-with": "XMLHttpRequest",
+      origin: BASE_URL,
+    },
+  });
+  if (
+    !response.data ||
+    response.data.status !== "success" ||
+    !response.data.dlink
+  ) {
+    throw new Error(`𝙰𝙿𝙸 𝚜𝚒𝚗 𝚎𝚗𝚕𝚊𝚌𝚎`);
   }
-  return response.data.dlink
+  return response.data.dlink;
 }
 
-function inferFilename(downloadUrl, fallback = FALLBACK_FILENAME) {
+function inferFilename(downloadUrl) {
   try {
-    const parsed = new URL(downloadUrl)
-    const queryName = parsed.searchParams.get('fname')
-    const fromQuery = queryName ? decodeURIComponent(queryName.trim()) : ''
-    const pathCandidate = decodeURIComponent(parsed.pathname.split('/').pop() ?? '').trim()
-    const picked = fromQuery || pathCandidate || fallback
+    const parsed = new URL(downloadUrl);
+    const queryName = parsed.searchParams.get("fname");
+    const fromQuery = queryName ? decodeURIComponent(queryName.trim()) : "";
+    const pathCandidate = decodeURIComponent(
+      parsed.pathname.split("/").pop() ?? ""
+    ).trim();
+    const picked = fromQuery || pathCandidate || FALLBACK_FILENAME;
     if (!path.extname(picked)) {
-      return `${picked}.m4a`
+      return `${picked}.m4a`;
     }
-    return picked
+    return picked;
   } catch {
-    return fallback
+    return FALLBACK_FILENAME;
   }
 }
 
-async function resolveOutputPath(downloadUrl, customPath) {
-  const fallbackName = inferFilename(downloadUrl)
-  if (!customPath) {
-    const tempDir = path.join(process.cwd(), 'tmp', 'applemusic')
-    await fsp.mkdir(tempDir, { recursive: true })
-    return path.join(tempDir, fallbackName)
-  }
-  const resolved = path.resolve(customPath)
-  try {
-    const stats = await fsp.stat(resolved)
-    if (stats.isDirectory()) {
-      return path.join(resolved, fallbackName)
-    }
-    return resolved
-  } catch {
-    if (customPath.endsWith('/') || customPath.endsWith('\\')) {
-      await fsp.mkdir(resolved, { recursive: true })
-      return path.join(resolved, fallbackName)
-    }
-    await fsp.mkdir(path.dirname(resolved), { recursive: true })
-    return resolved
-  }
+async function resolveOutputPath(downloadUrl) {
+  const fallbackName = inferFilename(downloadUrl);
+  const tempDir = path.join(process.cwd(), "tmp", "applemusic");
+  await fsp.mkdir(tempDir, { recursive: true });
+  return path.join(tempDir, fallbackName);
 }
 
-async function downloadFile(downloadUrl, outputPath) {
-  const destination = await resolveOutputPath(downloadUrl, outputPath)
-  await fsp.mkdir(path.dirname(destination), { recursive: true })
+async function downloadFile(downloadUrl) {
+  const destination = await resolveOutputPath(downloadUrl);
+  await fsp.mkdir(path.dirname(destination), { recursive: true });
   const response = await axios.get(downloadUrl, {
-    responseType: 'stream',
+    responseType: "stream",
     headers: {
       referer: `${BASE_URL}${SONG_PAGE}`,
-      'user-agent': DEFAULT_USER_AGENT,
-      accept: '*/*'
-    }
-  })
-  await pipeline(response.data, fs.createWriteStream(destination))
-  return destination
+      "user-agent": DEFAULT_USER_AGENT,
+      accept: "*/*",
+    },
+  });
+  await pipeline(response.data, fs.createWriteStream(destination));
+  return destination;
 }
 
 function pickMimetype(fileName) {
-  const ext = path.extname(fileName).toLowerCase()
-  if (ext === '.mp3') return 'audio/mpeg'
-  if (ext === '.m4a' || ext === '.mp4' || ext === '.aac') return 'audio/mp4'
-  if (ext === '.zip') return 'application/zip'
-  return 'application/octet-stream'
+  const ext = path.extname(fileName).toLowerCase();
+  if (ext === ".mp3") return "audio/mpeg";
+  if (ext === ".m4a" || ext === ".mp4" || ext === ".aac") return "audio/mp4";
+  return "audio/mp4";
 }
 
-// Quoted especial con mini-thumbnail
-async function makeFkontak() {
+// Función para crear barra de progreso
+function createProgressBar(percentage) {
+  const totalBars = 20;
+  const filledBars = Math.round((percentage / 100) * totalBars);
+  const emptyBars = totalBars - filledBars;
+  const bar = "█".repeat(filledBars) + "░".repeat(emptyBars);
+  return `[${bar}] ${percentage}%`;
+}
+
+// Función para extraer datos de URL de Apple Music
+function extractFromAppleUrl(url) {
   try {
-    const res = await fetch('https://i.postimg.cc/W3RsYXJ5/applemusic-(1)-(1)-(1)-(1).png')
-    const thumb2 = Buffer.from(await res.arrayBuffer())
-    return {
-      key: { participants: '0@s.whatsapp.net', remoteJid: 'status@broadcast', fromMe: false, id: 'Halo' },
-      message: { locationMessage: { name: 'Applemusic', jpegThumbnail: thumb2 } },
-      participant: '0@s.whatsapp.net'
-    }
+    const parsed = new URL(url);
+    const trackIdMatch = url.match(/i=(\d+)/);
+    const trackId = trackIdMatch ? trackIdMatch[1] : null;
+    return { trackId, url: parsed.href };
   } catch {
-    return undefined
+    return { trackId: null, url };
   }
 }
 
 const handler = async (m, { conn, args, usedPrefix, command }) => {
-  const options = parseArgs(args)
-  const quotedContact = await makeFkontak()
-  const numericSelection = (!options.appleUrl && args?.length) ? Number.parseInt(args[0], 10) : NaN
-  if (!options.appleUrl && Number.isInteger(numericSelection) && numericSelection > 0) {
-    const { chatId, messageId } = extractQuotedMeta(m)
-    if (!chatId || !messageId) {
-      return conn.reply(
-        m.chat,
-        `Responde al mensaje de resultados de ${usedPrefix}applesearch con *${usedPrefix}${command} ${numericSelection}* para elegir esa pista.`,
-        quotedContact || m
-      )
-    }
-    const picked = pickAppleResult(chatId, messageId, numericSelection)
-    if (!picked?.appleUrl) {
-      return conn.reply(
-        m.chat,
-        'Ese número no está disponible o expiró. Ejecuta de nuevo *applesearch* para actualizar la lista.',
-        quotedContact || m
-      )
-    }
-    options.appleUrl = picked.appleUrl
-    options.songName = picked.title || 'Unknown'
-    options.artistName = picked.artist || 'Unknown'
+  if (!args.length) {
+    return m.reply(
+      `𝚄𝚜𝚘: ${usedPrefix}${command} 𝚗𝚘𝚖𝚋𝚛𝚎 𝚌𝚊𝚗𝚌𝚒𝚘́𝚗\n𝙴𝚓𝚎𝚖𝚙𝚕𝚘: ${usedPrefix}${command} 𝚋𝚕𝚊𝚗𝚔 𝚜𝚙𝚊𝚌𝚎`
+    );
   }
-  if (!options.appleUrl) {
-    return conn.reply(
-      m.chat,
-      `Uso: ${usedPrefix}${command} --url <link_apple_music> [--song <nombre>] [--artist <artista>] [--quality m4a|mp3] [--skip-download]\nEjemplo: ${usedPrefix}${command} --url https://music.apple.com/... --quality mp3\n\nTambién puedes buscar con ${usedPrefix}applesearch y responder a ese mensaje con ${usedPrefix}${command} <número> para descargar.`,
-      quotedContact || m
-    )
-  }
-  await m.react?.('⏳')
+
+  const input = args.join(" ");
+  const isUrl = /^https?:\/\//i.test(input);
+  let appleUrl = "";
+  let songName = "";
+  let artistName = "";
+
+  // Variable para almacenar el mensaje
+  let loadingMsg = null;
+
   try {
-    const params = {
-      songName: options.songName || 'Unknown',
-      artistName: options.artistName || 'Unknown',
-      appleUrl: options.appleUrl,
-      quality: options.quality,
-      zipDownload: options.zipDownload,
-      token: options.token
-    }
-    await warmUpSession()
-    const downloadLink = await requestDownloadLink(params)
-    if (options.skipDownload) {
-      await conn.reply(m.chat, `URL directa:\n${downloadLink}`, quotedContact || m)
-      await m.react?.('✅')
-      return true
-    }
-    const savedTo = await downloadFile(downloadLink, options.outputPath)
-    const fileBuffer = await fsp.readFile(savedTo)
-    const mimetype = pickMimetype(savedTo)
-    const isAudio = mimetype.startsWith('audio/')
-    const caption = `Apple Music Downloader\n• Canción: ${params.songName}\n• Artista: ${params.artistName}\n• Calidad: ${params.quality}`
+    // Enviar mensaje inicial
+    loadingMsg = await conn.sendMessage(
+      m.chat,
+      {
+        text: `⚙️ 𝙸𝙽𝙸𝙲𝙸𝙰𝙽𝙳𝙾...\n${createProgressBar(0)}`,
+      },
+      { quoted: m }
+    );
 
-    if (isAudio) {
-      await conn.sendMessage(
-        m.chat,
-        { audio: fileBuffer, mimetype, fileName: path.basename(savedTo), ptt: false },
-        { quoted: quotedContact || m }
-      )
+    // ESPERAR 1 segundo
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Progreso más lento con MENOS actualizaciones
+    const progressSteps = [
+      { percent: 10, text: "𝙲𝙾𝙽𝙴𝙲𝚃𝙰𝙽𝙳𝙾..." },
+      { percent: 25, text: "𝙰𝙽𝙰𝙻𝙸𝚉𝙰𝙽𝙳𝙾..." },
+      { percent: 40, text: "𝙱𝚄𝚂𝙲𝙰𝙽𝙳𝙾..." },
+      { percent: 60, text: "𝙿𝚁𝙾𝙲𝙴𝚂𝙰𝙽𝙳𝙾..." },
+      { percent: 80, text: "𝙳𝙴𝚂𝙲𝙰𝚁𝙶𝙰𝙽𝙳𝙾..." },
+      { percent: 100, text: "𝙲𝙾𝙼𝙿𝙻𝙴𝚃𝙰𝙳𝙾" },
+    ];
+
+    for (let step of progressSteps) {
+      const { percent, text } = step;
+      try {
+        await conn.sendMessage(m.chat, {
+          text: `⚙️ ${text}\n${createProgressBar(percent)}`,
+          edit: loadingMsg.key,
+        });
+      } catch (e) {
+        console.log("Error editando mensaje:", e.message);
+        break;
+      }
+
+      // ESPERAR 1.5 segundos entre actualizaciones
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
+
+    // Realizar búsqueda después de mostrar progreso
+    if (isUrl) {
+      appleUrl = input;
+      const urlData = extractFromAppleUrl(appleUrl);
+      songName = "𝙰𝚙𝚙𝚕𝚎 𝙼𝚞𝚜𝚒𝚌";
+      artistName = "𝙰𝚛𝚝𝚒𝚜𝚝𝚊";
     } else {
-      await conn.sendMessage(
-        m.chat,
-        { document: fileBuffer, mimetype, fileName: path.basename(savedTo), caption },
-        { quoted: quotedContact || m }
-      )
+      const results = await searchAppleMusic(input);
+
+      if (!results || results.length === 0) {
+        await conn.sendMessage(m.chat, {
+          text: `❌ 𝙽𝚘 𝚜𝚎 𝚎𝚗𝚌𝚘𝚗𝚝𝚛𝚊𝚛𝚘𝚗 𝚛𝚎𝚜𝚞𝚕𝚝𝚊𝚍𝚘𝚜 𝚙𝚊𝚛𝚊: ${input}`,
+          edit: loadingMsg.key,
+        });
+        return;
+      }
+
+      const firstResult = results[0];
+      appleUrl = firstResult.appleUrl;
+      songName = firstResult.title;
+      artistName = firstResult.artist;
     }
 
-    await fsp.unlink(savedTo).catch(() => null)
-    await m.react?.('✅')
-    return true
+    // Calentamiento de sesión
+    await warmUpSession();
+
+    // Obtener enlace de descarga
+    const params = {
+      songName,
+      artistName,
+      appleUrl,
+      quality: "m4a",
+      zipDownload: false,
+      token: "none",
+    };
+
+    const downloadLink = await requestDownloadLink(params);
+
+    if (!downloadLink) {
+      throw new Error("𝙽𝚘 𝚑𝚊𝚢 𝚎𝚗𝚕𝚊𝚌𝚎 𝚍𝚎 𝚍𝚎𝚜𝚌𝚊𝚛𝚐𝚊");
+    }
+
+    // Mostrar mensaje de descarga
+    try {
+      await conn.sendMessage(m.chat, {
+        text: "✅ 𝙳𝙴𝚂𝙲𝙰𝚁𝙶𝙰 𝙲𝙾𝙼𝙿𝙻𝙴𝚃𝙰\n𝙴𝚗𝚟𝚒𝚊𝚗𝚍𝚘 𝚊𝚞𝚍𝚒𝚘...",
+        edit: loadingMsg.key,
+      });
+    } catch (e) {}
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Descargar archivo
+    const savedTo = await downloadFile(downloadLink);
+    const fileBuffer = await fsp.readFile(savedTo);
+    const mimetype = pickMimetype(savedTo);
+
+    // Enviar audio SIN CAPTION
+    await conn.sendMessage(
+      m.chat,
+      {
+        audio: fileBuffer,
+        mimetype: mimetype,
+        fileName: `${songName}.m4a`.replace(/[<>:"/\\|?*]/g, "_"),
+        ptt: false,
+        // SIN CAPTION
+      },
+      { quoted: m }
+    );
+
+    // Limpiar archivo temporal
+    await fsp.unlink(savedTo).catch(() => null);
   } catch (error) {
-    await m.react?.('❌')
-    const message = error?.message || 'Error desconocido'
-    return conn.reply(m.chat, `Apple Music scrape falló: ${message}`, quotedContact || m)
+    console.error("𝙴𝚛𝚛𝚘𝚛 𝙰𝙿𝙿𝙻𝙴:", error);
+
+    // Mostrar error en el mensaje
+    if (loadingMsg) {
+      try {
+        await conn.sendMessage(m.chat, {
+          text: `❌ 𝙴𝚛𝚛𝚘𝚛: ${error.message}`,
+          edit: loadingMsg.key,
+        });
+      } catch (e) {
+        await m.reply(`❌ 𝙴𝚛𝚛𝚘𝚛: ${error.message}`);
+      }
+    } else {
+      await m.reply(`❌ 𝙴𝚛𝚛𝚘𝚛: ${error.message}`);
+    }
   }
-}
+};
 
-/*handler.help = ['applemusic', 'appledl']
-handler.tags = ['dl']*/
-handler.command = /^(applemusic|appledl|appletrack)$/i
+// Comando único para todo
+handler.command = /^(apple|applemusic|appledl)$/i;
+handler.tags = ["downloader"];
+handler.help = ["apple <nombre/url>"];
+handler.register = false;
 
-export default handler
+export default handler;
