@@ -1,0 +1,114 @@
+import fetch from 'node-fetch'
+
+let handler = async (m, { conn }) => {
+  const db = global.db || { data: { users: {} } }
+  const parsed = await Promise.resolve(conn.parseMention?.(m.text || ''))
+  const mention0 = (Array.isArray(m.mentionedJid) && m.mentionedJid[0]) || (Array.isArray(parsed) && parsed[0])
+  const rawTarget = mention0 || m?.quoted?.sender || m.sender
+  const target = (conn.normalizeJid ? conn.normalizeJid(rawTarget) : rawTarget)
+  const userObj = (db.data.users && db.data.users[target]) || {}
+
+  const mentionedJid = [...new Set([m.sender, target].filter(Boolean).map(j => (conn.normalizeJid ? conn.normalizeJid(j) : j)))]
+
+  const number = String(target || '').split('@')[0]
+  let wName = ''
+  try { wName = await Promise.resolve(conn.getName?.(target)) } catch {}
+  const regName = (userObj?.registered && userObj?.name) ? userObj.name : ''
+  const name = regName || wName || (target === m.sender ? (m.pushName) : '') || `@${number}`
+  const age = userObj.age ?? null
+  
+  // OBTENER MONEDAS - USANDO [𝙶𝚁𝙴𝙼𝙻𝙸𝙽𝚂]
+  const coin = userObj.coin ?? userObj.bank ?? userObj.yenes ?? userObj.money ?? userObj.moneda ?? 0
+  
+  let sn = userObj.sn
+  if (!sn) {
+    sn = 'SN-' + Math.random().toString(36).slice(2, 6).toUpperCase() + '-' + Math.floor(1000 + Math.random() * 9000)
+    try { if (db.data.users[target]) db.data.users[target].sn = sn } catch {}
+  }
+
+  // Obtener nivel y experiencia
+  const nivel = userObj.level ?? 0
+  const exp = userObj.exp ?? 0
+  const expNeeded = nivel * 100 + 100 // Fórmula simple para siguiente nivel
+  const porcentajeNivel = nivel > 0 ? Math.min(100, (exp / expNeeded) * 100) : 0
+  
+  // Crear barra de progreso
+  const barLength = 10
+  const filled = Math.round((porcentajeNivel / 100) * barLength)
+  const barraProgreso = '█'.repeat(filled) + '░'.repeat(barLength - filled)
+  
+  // Determinar rango basado en nivel
+  let rango = '🟢 𝙽𝙾𝚅𝙰𝚃𝙾'
+  let emblema = '🌱'
+  if (nivel >= 50) {
+    rango = '🔴 𝙼𝙰𝙴𝚂𝚃𝚁𝙾'
+    emblema = '👑'
+  } else if (nivel >= 30) {
+    rango = '🟣 𝙴𝚇𝙿𝙴𝚁𝚃𝙾'
+    emblema = '⭐'
+  } else if (nivel >= 15) {
+    rango = '🔵 𝙰𝚅𝙰𝙽𝚉𝙰𝙳𝙾'
+    emblema = '🎯'
+  } else if (nivel >= 5) {
+    rango = '🟡 𝙸𝙽𝚃𝙴𝚁𝙼𝙴𝙳𝙸𝙾'
+    emblema = '⚡'
+  }
+
+  // Estadísticas adicionales
+  const partidas_jugadas = userObj.gamesPlayed ?? userObj.partidas ?? 0
+  const partidas_ganadas = userObj.gamesWon ?? userObj.victorias ?? 0
+  const porcentajeVictorias = partidas_jugadas > 0 ? Math.round((partidas_ganadas / partidas_jugadas) * 100) : 0
+  const racha = userObj.streak ?? userObj.racha ?? 0
+
+  // Crear mensaje de perfil con diseño visual
+  const perfilMessage = `> ⚙️ *𝙿𝙴𝚁𝙵𝙸𝙻 𝙳𝙴 ${name.toUpperCase()}* ⚙️
+> ${emblema} ${rango} • ${sn}
+
+📊 *𝙴𝚂𝚃𝙰𝙳𝙸𝚂𝚃𝙸𝙲𝙰𝚂*
+├─📈 𝙽𝙸𝚅𝙴𝙻: ${nivel} | ⚡ ${exp}𝚇𝙿
+├─📊 𝙿𝚁𝙾𝙶𝚁𝙴𝚂𝙾: ${barraProgreso} ${Math.round(porcentajeNivel)}%
+├─🎮 𝙿𝙰𝚁𝚃𝙸𝙳𝙰𝚂: ${partidas_jugadas}𝙹 | ✅ ${partidas_ganadas}𝙶
+├─🎯 𝙴𝙵𝙸𝙲𝙰𝙲𝙸𝙰: ${porcentajeVictorias}% | 🔥 ${racha}𝚁
+
+💰 *𝙴𝙲𝙾𝙽𝙾𝙼𝙸𝙰*
+├─🧌 [𝙶𝚁𝙴𝙼𝙻𝙸𝙽𝚂]: ${coin.toLocaleString()}
+├─🏦 𝙱𝙰𝙽𝙲𝙾: ${userObj.bank ?? coin} [𝙶𝚁𝙴𝙼𝙻𝙸𝙽𝚂]
+
+👤 *𝙿𝙴𝚁𝚂𝙾𝙽𝙰𝙻*
+├─📱 𝙽𝚄́𝙼𝙴𝚁𝙾: wa.me/${number}
+├─📝 𝚁𝙴𝙶𝙸𝚂𝚃𝚁𝙾: ${userObj.registered ? '✅' : '❌'}
+├─🎂 𝙴𝙳𝙰𝙳: ${age ? age + ' 𝚊ñ𝚘𝚜' : '𝙽𝚘 𝚛𝚎𝚐𝚒𝚜𝚝𝚛𝚊𝚍𝚊'}`
+
+  const fkontak = await makeFkontak()
+
+  await conn.sendMessage(
+    m.chat,
+    { 
+      text: perfilMessage,
+      mentions: mentionedJid
+    },
+    { quoted: fkontak || m }
+  )
+}
+
+handler.help = ['perfil']
+handler.tags = ['tools']
+handler.command = /^perfil$/i
+handler.exp = 5
+handler.register = true
+
+export default handler
+
+async function makeFkontak() {
+  try {
+    const res = await fetch('https://image2url.com/images/1765504298320-250ed158-9ddc-49d9-942b-2edfcc711cc8.jpg')
+    const thumb2 = Buffer.from(await res.arrayBuffer())
+    return {
+      key: { participant: '0@s.whatsapp.net', remoteJid: 'status@broadcast', fromMe: false, id: 'Halo' },
+      message: { locationMessage: { name: `📇 𝙿𝙴𝚁𝙵𝙸𝙻`, jpegThumbnail: thumb2 } },
+      participant: '0@s.whatsapp.net'
+    }
+  } catch {
+    return null
+  }
+}

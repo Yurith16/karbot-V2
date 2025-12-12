@@ -2,7 +2,7 @@
   "users": {
     "50496926150@s.whatsapp.net": {
       "name": "⃤⃤⃢🍃™𝑯𝑬𝑹𝑵𝑨𝑵𝑫𝑬𝒁º",
-      "exp": 5299,
+      "exp": 5477,
       "coin": 0,
       "bank": 0,
       "level": 0,
@@ -16,7 +16,7 @@
       "premiumTime": 0,
       "banned": false,
       "bannedReason": "",
-      "commands": 408,
+      "commands": 422,
       "afk": -1,
       "afkReason": "",
       "warn": 0,
@@ -186,6 +186,28 @@
       "afk": -1,
       "afkReason": "",
       "warn": 0
+    },
+    "50496926150": {
+      "name": "⃤⃤⃢🍃™𝑯𝑬𝑹𝑵𝑨𝑵𝑫𝑬𝒁º",
+      "exp": 5477,
+      "coin": 0,
+      "bank": 0,
+      "level": 0,
+      "health": 100,
+      "genre": "",
+      "birth": "",
+      "marry": "",
+      "description": "",
+      "packstickers": null,
+      "premium": false,
+      "premiumTime": 0,
+      "banned": false,
+      "bannedReason": "",
+      "commands": 422,
+      "afk": -1,
+      "afkReason": "",
+      "warn": 0,
+      "sn": "SN-EQEQ-6065"
     }
   },
   "chats": {

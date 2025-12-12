@@ -8,7 +8,10 @@ const KARBOT_CONFIG = {
   BOT_NAME: "KARBOT",
   OWNER_NAME: "HERNANDEZ",
   OWNER_NUMBER: "50496926150",
-  MENU_IMAGE: "https://image2url.com/images/1765486087799-4050fc16-aeff-4200-b499-20a5538148a7.jpg"
+  MENU_IMAGES: [
+    join(process.cwd(), 'src', 'images', 'menu.png'),
+    join(process.cwd(), 'src', 'images', 'menu.jpeg')
+  ]
 }
 
 /**
@@ -26,6 +29,16 @@ function karbotFont(text) {
     4: "𝟰", 5: "𝟱", 6: "𝟲", 7: "𝟳", 8: "𝟴", 9: "𝟵", " ": " "
   };
   return text.split("").map((char) => mapping[char] || char).join("");
+}
+
+/**
+ * Seleccionar imagen aleatoria del menú
+ */
+function getRandomMenuImage() {
+  const availableImages = KARBOT_CONFIG.MENU_IMAGES.filter(img => existsSync(img))
+  if (availableImages.length === 0) return null
+  const randomIndex = Math.floor(Math.random() * availableImages.length)
+  return availableImages[randomIndex]
 }
 
 /**
@@ -63,8 +76,8 @@ async function getKarbotUptime() {
  */
 function getKarbotDate() {
   const now = new Date();
-  const days = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
-  const months = ["enero", "febrero", "marzo", "abril", "mayo", "juno", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+  const days = ["domingo", "lunes", "martes", "miércoles", "jueves", "vierves", "sábado"];
+  const months = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
   return `${days[now.getDay()]}, ${now.getDate()} de ${months[now.getMonth()]} de ${now.getFullYear()}`;
 }
 
@@ -181,13 +194,11 @@ let handler = async (m, { conn, usedPrefix: _p }) => {
       }
     }
 
-
-
     // Combinar todo
     const fullText = menuSections.join("\n\n")
 
     // === ENVÍO INTERACTIVO KARBOT ===
-    const localImagePath = join(process.cwd(), 'src', 'menu.jpeg')
+    const selectedImage = getRandomMenuImage()
 
     // Solo botón de ayuda
     const karbotButtons = [
@@ -201,29 +212,27 @@ let handler = async (m, { conn, usedPrefix: _p }) => {
     ]
 
     let header
-    if (existsSync(localImagePath)) {
-      const media = await prepareWAMessageMedia({ image: { url: localImagePath } }, { upload: conn.waUploadToServer })
-      header = proto.Message.InteractiveMessage.Header.fromObject({
-        hasMediaAttachment: true,
-        imageMessage: media.imageMessage
-      })
-    } else {
-      // Usar imagen KARBOT por defecto
+    if (selectedImage && existsSync(selectedImage)) {
       try {
-        const media = await prepareWAMessageMedia({ image: { url: KARBOT_CONFIG.MENU_IMAGE } }, { upload: conn.waUploadToServer })
+        // Usar imagen local seleccionada aleatoriamente
+        const media = await prepareWAMessageMedia({ image: { url: selectedImage } }, { upload: conn.waUploadToServer })
         header = proto.Message.InteractiveMessage.Header.fromObject({
           hasMediaAttachment: true,
           imageMessage: media.imageMessage
         })
-      } catch {
+      } catch (imgError) {
+        console.error('❌ Error cargando imagen del menú:', imgError)
         header = proto.Message.InteractiveMessage.Header.fromObject({ hasMediaAttachment: false })
       }
+    } else {
+      // Sin imagen si no hay disponibles
+      header = proto.Message.InteractiveMessage.Header.fromObject({ hasMediaAttachment: false })
     }
 
-    // Mensaje interactivo KARBOT (sin footer extenso)
+    // Mensaje interactivo KARBOT
     const interactiveMessage = proto.Message.InteractiveMessage.fromObject({
       body: proto.Message.InteractiveMessage.Body.fromObject({ text: fullText }),
-      footer: proto.Message.InteractiveMessage.Footer.fromObject({ text: 'KARBOT' }),
+      footer: proto.Message.InteractiveMessage.Footer.fromObject({ text: '⚙️ 𝙺𝙰𝚁𝙱𝙾𝚃' }),
       header,
       nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.fromObject({
         buttons: karbotButtons
@@ -240,12 +249,12 @@ let handler = async (m, { conn, usedPrefix: _p }) => {
     await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
 
   } catch (e) {
-    console.error('❌ ERROR KARBOT:', e)
+    console.error('❌ ERROR KARBOT MENÚ:', e)
     await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
     
-    // Fallback KARBOT
+    // Fallback KARBOT simple
     await conn.reply(m.chat, 
-`⚙️ *MENÚ KARBOT*\n\n▸ ${_p}menu - Menú principal\n▸ ${_p}ping - Estado del bot\n▸ ${_p}owner - Información\n\n📞 Contacto: ${KARBOT_CONFIG.OWNER_NUMBER}`, m)
+`⚙️ *𝙼𝙴𝙽𝚄́ 𝙺𝙰𝚁𝙱𝙾𝚃*\n\n▸ ${_p}menu - 𝙼𝚎𝚗𝚞́ 𝚙𝚛𝚒𝚗𝚌𝚒𝚙𝚊𝚕\n▸ ${_p}ping - 𝙴𝚜𝚝𝚊𝚍𝚘 𝚍𝚎𝚕 𝚋𝚘𝚝\n▸ ${_p}owner - 𝙸𝚗𝚏𝚘𝚛𝚖𝚊𝚌𝚒𝚘́𝚗\n\n📞 𝙲𝚘𝚗𝚝𝚊𝚌𝚝𝚘: ${KARBOT_CONFIG.OWNER_NUMBER}`, m)
   }
 }
 

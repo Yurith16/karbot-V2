@@ -1,0 +1,333 @@
+import { saveDatabase } from '../lib/db.js'
+import { buildUserRecord, sendRegisterCard, sendExistingIdCard } from '../lib/registry.js'
+import { prepareWAMessageMedia, generateWAMessageFromContent, getDevice } from '@whiskeysockets/baileys'
+import fetch from 'node-fetch'
+
+const sessions = new Map()
+const regRecent = new Map()
+
+function toNum(jid = '') { return String(jid).split('@')[0].split(':')[0].replace(/[^0-9]/g, '') }
+
+function mirrorUser(users, numKey, jidKey) {
+  if (!users) return
+  const a = users[numKey]
+  const b = users[jidKey]
+  const ref = a || b
+  if (!ref) return
+  users[numKey] = ref
+  users[jidKey] = ref
+}
+
+async function askStep(m, conn, step) {
+  const prompts = {
+    name: '⚙️ *𝙴𝚂𝙲𝚁𝙸𝙱𝙴 𝚃𝚄 𝙽𝙾𝙼𝙱𝚁𝙴:*',
+    age: '⚙️ *𝙸𝙽𝙶𝚁𝙴𝚂𝙰 𝚃𝚄 𝙴𝙳𝙰𝙳 (𝟷𝟶-𝟿𝟶):*',
+    bio: '⚙️ *𝙱𝙸𝙾 𝙳𝙴𝚂𝙲𝚁𝙸𝙿𝙲𝙸𝙾́𝙽 (𝙼𝙰́𝚇 𝟾𝟶 𝙲𝙰𝚁𝙰𝙲𝚃𝙴𝚁𝙴𝚂):*'
+  }
+  await conn.reply(m.chat, prompts[step], m)
+}
+
+async function finalize(m, conn, state, userKey) {
+  const num = toNum(m.sender)
+  const jidKey = m.sender
+  try { regRecent.set(m.sender, Date.now()) } catch {}
+  
+  // CORRECCIÓN: Reemplazar ||= por asignación condicional tradicional
+  if (!global.db.data.users) global.db.data.users = {}
+  if (!global.db.data.users[num]) {
+    global.db.data.users[num] = { exp: 0, coin: 10, level: 0, warns: 0, premium: false, spam: 0 }
+  }
+  
+  const base = global.db.data.users[num]
+  const record = buildUserRecord(base, state)
+  Object.assign(global.db.data.users[num], record, { registered: true })
+  try { mirrorUser(global.db.data.users, num, jidKey) } catch {}
+  try { global.db.data.users[jidKey].registered = true } catch {}
+  try { await saveDatabase() } catch (e) { console.log('[DB] save error:', e?.message || e) }
+
+  let avatarUrl = ''
+  try { avatarUrl = await conn.profilePictureUrl(m.sender, 'image') } catch {}
+  if (!avatarUrl) avatarUrl = 'https://image2url.com/images/1765504298320-250ed158-9ddc-49d9-942b-2edfcc711cc8.jpg'
+
+  const userTag = '@' + num
+  let autoName = m?.pushName || ''
+  try { autoName = (await Promise.resolve(conn.getName?.(m.sender))) || autoName } catch {}
+  if (!autoName) autoName = '𝚄𝚂𝚄𝙰𝚁𝙸𝙾'
+  let quoted = null
+  try {
+    const res = await fetch('https://image2url.com/images/1765504298320-250ed158-9ddc-49d9-942b-2edfcc711cc8.jpg')
+    const thumb2 = Buffer.from(await res.arrayBuffer())
+    quoted = {
+      key: { participants: '0@s.whatsapp.net', remoteJid: 'status@broadcast', fromMe: false, id: 'Halo' },
+      message: { locationMessage: { name: '✅ 𝚁𝙴𝙶𝙸𝚂𝚃𝚁𝙾 𝙲𝙾𝙼𝙿𝙻𝙴𝚃𝙾', jpegThumbnail: thumb2 } },
+      participant: '0@s.whatsapp.net'
+    }
+  } catch {}
+  await sendRegisterCard(conn, m.chat, { userTag, avatarUrl, info: record, participant: m.sender, userName: autoName, title: '𝚁𝙴𝙶𝙸𝚂𝚃𝚁𝙾', quoted })
+}
+
+let handler = async (m, { conn, args, command, usedPrefix }) => {
+  const chatId = m.chat
+  const userId = m.sender
+  const key = chatId + ':' + userId
+  const isCancel = /^cancel(ar)?$/i.test(args[0] || '')
+
+  if (/^reg(istro)?$/i.test(command)) {
+    const num = toNum(m.sender)
+    const jidKey = m.sender
+    const users = (global.db && global.db.data && global.db.data.users) ? global.db.data.users : {}
+    try { mirrorUser(users, num, jidKey) } catch {}
+    const existing = users[num] || users[jidKey]
+    if (existing && (existing.registered || existing.sn)) {
+      const last = regRecent.get(m.sender) || 0
+      if (Date.now() - last < 3000) return
+      if (!existing.sn) {
+        existing.sn = 'SN-' + Math.random().toString(36).slice(2, 6).toUpperCase() + '-' + Math.floor(1000 + Math.random() * 9000)
+        try { await saveDatabase() } catch {}
+      }
+      let displayName = m?.pushName || ''
+      try { displayName = (await Promise.resolve(conn.getName?.(m.sender))) || displayName } catch {}
+      if (!displayName) displayName = '𝚄𝚂𝚄𝙰𝚁𝙸𝙾'
+      await sendExistingIdCard(conn, m.chat, { participant: m.sender, userName: displayName, existing })
+      return
+    }
+    
+    let autoName = m?.pushName || ''
+    try { autoName = (await Promise.resolve(conn.getName?.(m.sender))) || autoName } catch {}
+    if (!autoName) autoName = '𝚄𝚂𝚄𝙰𝚁𝙸𝙾'
+
+    let avatarUrl = ''
+    try { avatarUrl = await conn.profilePictureUrl(m.sender, 'image') } catch {}
+    if (!avatarUrl) avatarUrl = 'https://image2url.com/images/1765504298320-250ed158-9ddc-49d9-942b-2edfcc711cc8.jpg'
+
+    let fkontak = m
+    try {
+      const res = await fetch('https://image2url.com/images/1765504298320-250ed158-9ddc-49d9-942b-2edfcc711cc8.jpg')
+      const thumb2 = Buffer.from(await res.arrayBuffer())
+      fkontak = {
+        key: { participants: '0@s.whatsapp.net', remoteJid: 'status@broadcast', fromMe: false, id: 'Halo' },
+        message: { locationMessage: { name: '⚙️ 𝚁𝙴𝙶𝙸𝚂𝚃𝚁𝙾', jpegThumbnail: thumb2 } },
+        participant: '0@s.whatsapp.net'
+      }
+    } catch {}
+
+    const minAge = 17, maxAge = 30
+    const rows = []
+    for (let i = minAge; i <= maxAge; i++) {
+      rows.push({ header: `𝙴𝙳𝙰𝙳 ${i}`, title: autoName, description: '𝚂𝙴𝙻𝙴𝙲𝙲𝙸𝙾𝙽𝙰𝚁 𝙴𝚂𝚃𝙰 𝙴𝙳𝙰𝙳', id: `${usedPrefix}regok ${i}` })
+    }
+
+    try {
+      const device = await getDevice(m.key.id)
+      if (device !== 'desktop' && device !== 'web') {
+        const media = await prepareWAMessageMedia({ image: { url: avatarUrl } }, { upload: conn.waUploadToServer })
+        const interactiveMessage = {
+          body: { text: `⚙️ *𝚁𝙴𝙶𝙸𝚂𝚃𝚁𝙾 𝚁𝙰́𝙿𝙸𝙳𝙾*\n\n📝 𝙽𝙾𝙼𝙱𝚁𝙴: ${autoName}\n🎂 𝚂𝙴𝙻𝙴𝙲𝙲𝙸𝙾𝙽𝙰 𝚃𝚄 𝙴𝙳𝙰𝙳:` },
+          footer: { text: `⚙️ 𝙺𝙰𝚁𝙱𝙾𝚃` },
+          header: { title: '', hasMediaAttachment: true, imageMessage: media.imageMessage },
+          nativeFlowMessage: {
+            buttons: [
+              {
+                name: 'single_select',
+                buttonParamsJson: JSON.stringify({
+                  title: '𝙴𝙻𝙸𝙶𝙴 𝚃𝚄 𝙴𝙳𝙰𝙳',
+                  sections: [ { title: '𝙴𝙳𝙰𝙳𝙴𝚂', rows } ]
+                })
+              }
+            ],
+            messageParamsJson: ''
+          }
+        }
+        const msg = generateWAMessageFromContent(m.chat, { viewOnceMessage: { message: { interactiveMessage } } }, { userJid: conn.user.jid, quoted: fkontak })
+        await conn.relayMessage(m.chat, msg.message, { messageId: msg.key.id })
+        return
+      }
+    } catch {}
+
+    const list = Array.from({ length: 30 - 17 + 1 }, (_, k) => 17 + k).map(n => `• ${usedPrefix}regok ${n}`).join('\n')
+    await conn.sendMessage(m.chat, { text: `⚙️ *𝚁𝙴𝙶𝙸𝚂𝚃𝚁𝙾 𝚁𝙰́𝙿𝙸𝙳𝙾*\n\n📝 𝙽𝙾𝙼𝙱𝚁𝙴: ${autoName}\n🎂 𝙴𝙻𝙸𝙶𝙴 𝚃𝚄 𝙴𝙳𝙰𝙳:\n\n${list}` }, { quoted: fkontak })
+    return
+  }
+
+  if (isCancel) {
+    if (sessions.has(key)) { sessions.delete(key); await conn.reply(m.chat, '⚙️ 𝚁𝙴𝙶𝙸𝚂𝚃𝚁𝙾 𝙲𝙰𝙽𝙲𝙴𝙻𝙰𝙳𝙾', m) }
+    else await conn.reply(m.chat, '⚙️ 𝙽𝙾 𝚃𝙸𝙴𝙽𝙴𝚂 𝚁𝙴𝙶𝙸𝚂𝚃𝚁𝙾 𝙴𝙽 𝙲𝚄𝚁𝚂𝙾', m)
+    return
+  }
+
+  if (/^regok$/i.test(command)) {
+    const num = toNum(m.sender)
+    const jidKey = m.sender
+    const users = (global.db && global.db.data && global.db.data.users) ? global.db.data.users : {}
+    try { mirrorUser(users, num, jidKey) } catch {}
+    const existing = users[num] || users[jidKey]
+    if (existing && (existing.registered || existing.sn)) {
+      const last = regRecent.get(m.sender) || 0
+      if (Date.now() - last < 3000) return
+      if (!existing.sn) {
+        existing.sn = 'SN-' + Math.random().toString(36).slice(2, 6).toUpperCase() + '-' + Math.floor(1000 + Math.random() * 9000)
+        try { await saveDatabase() } catch {}
+      }
+      let displayName = m?.pushName || ''
+      try { displayName = (await Promise.resolve(conn.getName?.(m.sender))) || displayName } catch {}
+      if (!displayName) displayName = '𝚄𝚂𝚄𝙰𝚁𝙸𝙾'
+      await sendExistingIdCard(conn, m.chat, { participant: m.sender, userName: displayName, existing })
+      return
+    }
+    const age = parseInt(args[0])
+    if (isNaN(age) || age < 10 || age > 90) {
+      await conn.reply(m.chat, '⚙️ 𝙴𝙳𝙰𝙳 𝙸𝙽𝚅𝙰́𝙻𝙸𝙳𝙰\n𝚄𝚂𝙰: .regok 20', m)
+      return
+    }
+    let autoName = m?.pushName || ''
+    try { autoName = (await Promise.resolve(conn.getName?.(m.sender))) || autoName } catch {}
+    if (!autoName) autoName = '𝚄𝚂𝚄𝙰𝚁𝙸𝙾'
+    const state = { name: autoName, age, bio: '𝚂𝙸𝙽 𝙱𝙸𝙾' }
+    try { regRecent.set(m.sender, Date.now()) } catch {}
+    sessions.delete(key)
+    return finalize(m, conn, state, key)
+  }
+
+  const ses = sessions.get(key)
+  if (!ses) return
+  const text = (m.text || '').trim()
+
+  if (ses.step === 'name') {
+    if (!text || text.length < 2 || text.length > 30) {
+      await conn.reply(m.chat, '⚙️ 𝙽𝙾𝙼𝙱𝚁𝙴 𝙸𝙽𝚅𝙰́𝙻𝙸𝙳𝙾\n𝟸-𝟹𝟶 𝙲𝙰𝚁𝙰𝙲𝚃𝙴𝚁𝙴𝚂', m)
+      return askStep(m, conn, 'name')
+    }
+    ses.name = text
+    ses.step = 'age'
+    return askStep(m, conn, 'age')
+  }
+
+  if (ses.step === 'age') {
+    const n = parseInt(text)
+    if (isNaN(n) || n < 10 || n > 90) {
+      await conn.reply(m.chat, '⚙️ 𝙴𝙳𝙰𝙳 𝙸𝙽𝚅𝙰́𝙻𝙸𝙳𝙰\n𝟷𝟶-𝟿𝟶 𝙰𝙽̃𝙾𝚂', m)
+      return askStep(m, conn, 'age')
+    }
+    ses.age = n
+    ses.step = 'bio'
+    return askStep(m, conn, 'bio')
+  }
+
+  if (ses.step === 'bio') {
+    if (!text || text.length > 80) {
+      await conn.reply(m.chat, '⚙️ 𝙱𝙸𝙾 𝙸𝙽𝚅𝙰́𝙻𝙸𝙳𝙰\n𝙼𝙰́𝚇 𝟾𝟶 𝙲𝙰𝚁𝙰𝙲𝚃𝙴𝚁𝙴𝚂', m)
+      return askStep(m, conn, 'bio')
+    }
+    ses.bio = text
+    sessions.delete(key)
+    return finalize(m, conn, ses, key)
+  }
+}
+
+handler.help = ['registro', 'reg', 'regok <edad>', 'cancel']
+handler.tags = ['user']
+handler.command = /^(registro|reg|regok|cancel)$/i
+
+handler.before = async function (m, { conn }) {
+  const key = m.chat + ':' + m.sender
+  const ses = sessions.get(key)
+  
+  try {
+    const msg = m.message || {}
+    let selectedId = null
+    const irm = msg.interactiveResponseMessage
+    if (!selectedId && irm && irm.nativeFlowResponseMessage) {
+      try {
+        const params = JSON.parse(irm.nativeFlowResponseMessage.paramsJson || '{}')
+        if (params && typeof params.id === 'string') selectedId = params.id
+        if (!selectedId && typeof params.selectedId === 'string') selectedId = params.selectedId
+        if (!selectedId && typeof params.rowId === 'string') selectedId = params.rowId
+      } catch {}
+    }
+    const lrm = msg.listResponseMessage
+    if (!selectedId && lrm && lrm.singleSelectReply && lrm.singleSelectReply.selectedRowId) {
+      selectedId = lrm.singleSelectReply.selectedRowId
+    }
+    const brm = msg.buttonsResponseMessage
+    if (!selectedId && brm && typeof brm.selectedButtonId === 'string') {
+      selectedId = brm.selectedButtonId
+    }
+    
+    if (selectedId && /\bregok\b/i.test(selectedId)) {
+      let age = NaN
+      let m1 = selectedId.match(/regok\s+(\d{1,2})/i)
+      if (m1) age = parseInt(m1[1])
+      if (isNaN(age)) {
+        const m2 = selectedId.match(/(\d{1,2})\b/)
+        if (m2) age = parseInt(m2[1])
+      }
+      if (!isNaN(age) && age >= 10 && age <= 90) {
+        const num = toNum(m.sender)
+        const jidKey = m.sender
+        const users = (global.db && global.db.data && global.db.data.users) ? global.db.data.users : {}
+        try { mirrorUser(users, num, jidKey) } catch {}
+        const existing = users[num] || users[jidKey]
+        if (existing && (existing.registered || existing.sn)) {
+          const last = regRecent.get(m.sender) || 0
+          if (Date.now() - last < 3000) return true
+          if (!existing.sn) {
+            existing.sn = 'SN-' + Math.random().toString(36).slice(2, 6).toUpperCase() + '-' + Math.floor(1000 + Math.random() * 9000)
+            try { await saveDatabase() } catch {}
+          }
+          let displayName = m?.pushName || ''
+          try { displayName = (await Promise.resolve(conn.getName?.(m.sender))) || displayName } catch {}
+          if (!displayName) displayName = '𝚄𝚂𝚄𝙰𝚁𝙸𝙾'
+          await sendExistingIdCard(conn, m.chat, { participant: m.sender, userName: displayName, existing })
+          return true
+        }
+        let autoName = m?.pushName || ''
+        try { autoName = (await Promise.resolve(conn.getName?.(m.sender))) || autoName } catch {}
+        if (!autoName) autoName = '𝚄𝚂𝚄𝙰𝚁𝙸𝙾'
+        const state = { name: autoName, age, bio: '𝚂𝙸𝙽 𝙱𝙸𝙾' }
+        try { regRecent.set(m.sender, Date.now()) } catch {}
+        sessions.delete(key)
+        await finalize(m, conn, state, key)
+        return true
+      }
+    }
+  } catch {}
+
+  if (!ses) return false
+  const text = (m.text || '').trim()
+  const prefixes = Array.isArray(global.prefixes) && global.prefixes.length ? global.prefixes : ['.', '!', '/']
+  const startsWithPrefix = prefixes.some(p => text.startsWith(p))
+  if (startsWithPrefix && !/^\.?cancel(ar)?$/i.test(text)) return false
+
+  if (ses.step === 'name') {
+    if (!text || text.length < 2 || text.length > 30) {
+      await this.reply(m.chat, '⚙️ 𝙽𝙾𝙼𝙱𝚁𝙴 𝙸𝙽𝚅𝙰́𝙻𝙸𝙳𝙾\n𝟸-𝟹𝟶 𝙲𝙰𝚁𝙰𝙲𝚃𝙴𝚁𝙴𝚂', m)
+      return askStep(m, this, 'name'), true
+    }
+    ses.name = text
+    ses.step = 'age'
+    return askStep(m, this, 'age'), true
+  }
+  if (ses.step === 'age') {
+    const n = parseInt(text)
+    if (isNaN(n) || n < 10 || n > 90) {
+      await this.reply(m.chat, '⚙️ 𝙴𝙳𝙰𝙳 𝙸𝙽𝚅𝙰́𝙻𝙸𝙳𝙰\n𝟷𝟶-𝟿𝟶 𝙰𝙽̃𝙾𝚂', m)
+      return askStep(m, this, 'age'), true
+    }
+    ses.age = n
+    ses.step = 'bio'
+    return askStep(m, this, 'bio'), true
+  }
+  if (ses.step === 'bio') {
+    if (!text || text.length > 80) {
+      await this.reply(m.chat, '⚙️ 𝙱𝙸𝙾 𝙸𝙽𝚅𝙰́𝙻𝙸𝙳𝙰\n𝙼𝙰́𝚇 𝟾𝟶 𝙲𝙰𝚁𝙰𝙲𝚃𝙴𝚁𝙴𝚂', m)
+      return askStep(m, this, 'bio'), true
+    }
+    ses.bio = text
+    sessions.delete(key)
+    await finalize(m, this, ses, key)
+    return true
+  }
+  return false
+}
+
+export default handler

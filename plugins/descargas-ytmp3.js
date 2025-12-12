@@ -621,8 +621,8 @@ let handler = async (m, { conn, args, text, usedPrefix, command }) => {
 };
 
 handler.help = [
-  "ytmp3 <url> | <calidad> - Descargar audio (calidad: 64, 128, 192, 256, 320)",
-  "ytmp4 <url> | <calidad> - Descargar video (calidad: 144, 240, 360, 480, 720, 1080, 1440, 2160)",
+  "ytmp3 <url> | <calidad>",
+  "ytmp4 <url> | <calidad>",
 ];
 handler.tags = ["downloader"];
 handler.command = /^(ytmp3|ytmp4|yta|ytaudio|ytv|ytvideo)$/i;
