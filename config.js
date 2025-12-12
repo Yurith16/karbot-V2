@@ -17,7 +17,8 @@ global.retirado = [["50496926150", "𝙷𝙴𝚁𝙽𝙰𝙽𝙳𝙴𝚉", true]
 
 // Configuraciones principales
 global.roowner = ["50496926150"];
-global.owner = [["50496926150", "𝙷𝙴𝚁𝙽𝙰𝙽𝙳𝙴𝚉", true]];
+global.owner = [["50496926150", "𝙷𝙴𝚁𝙽𝙰𝙽𝙳𝙴𝚉", true],
+  ['50487690812', 'Kar', true]];
 
 global.mods = ["50496926150"];
 global.suittag = ["50496926150"];

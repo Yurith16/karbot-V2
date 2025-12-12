@@ -5,7 +5,6 @@ import { protoType, serialize, makeWASocket } from '../lib/simple.js'
 import path from 'path'
 import fs from 'fs'
 
-// --- YEEH ---
 // Inicializamos global.subbots
 if (!global.subbots) global.subbots = []
 
@@ -13,32 +12,30 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
   let userName = args[0] ? args[0] : m.sender.split("@")[0]
   const folder = path.join('Sessions/SubBot', userName)
 
-  // --- VERSIÓN ORIGINAL ---
-  // Usamos global.subbots para verificar el límite
+  // Verificar límite de subbots
   if (global.subbots.length >= 100) {
     try { await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } }) } catch {}
-    return conn.reply(m.chat, '> [🌱] 𝙔𝙖 𝙉𝙤 𝙃𝙖𝙮 𝙈𝙖́𝙨 𝙀𝙨𝙥𝙖𝙘𝙞𝙤 𝙋𝙖𝙧𝙖 𝙃𝙖𝙘𝙚𝙧𝙩𝙚 𝙎𝙪𝙗-𝘽𝙤𝙩 𝙄𝙣𝙩𝙚𝙣𝙩𝙖𝙡𝙤 𝙉𝙪𝙚𝙫𝙖𝙢𝙚𝙣𝙩𝙚 𝙈𝙖́𝙨 𝙏𝙖𝙧𝙙𝙚...', m)
+    return conn.reply(m.chat, '*⚙️ 𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️*\n\n> 🚫 𝙻𝙸𝙼𝙸𝚃𝙴 𝙳𝙴 𝚂𝚄𝙱𝙱𝙾𝚃𝚂 𝙰𝙻𝙲𝙰𝙽𝚉𝙰𝙳𝙾', m)
   }
 
-  // --- OKEY ---
-  // Usamos global.subbots para buscar una conexión existente
+  // Verificar conexión existente
   const existing = global.subbots.find(c => c.id === userName && c.connection === 'open')
   if (existing) {
     try { await conn.sendMessage(m.chat, { react: { text: '🤖', key: m.key } }) } catch {}
-    return conn.reply(m.chat, '*𝘠𝘢 𝘌𝘳𝘦𝘴 𝘚𝘶𝘣-𝘣𝘰𝘵 𝘋𝘦 𝘐𝘵𝘴𝘶𝘬𝘪 🟢*', m)
+    return conn.reply(m.chat, '*⚙️ 𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️*\n\n> ⚠️ 𝚈𝙰 𝚃𝙸𝙴𝙽𝙴𝚂 𝚂𝚄𝙱𝙱𝙾𝚃 𝙰𝙲𝚃𝙸𝚅𝙾', m)
   }
 
   if (!fs.existsSync(folder)) fs.mkdirSync(folder, { recursive: true })
 
-  try { await conn.sendMessage(m.chat, { react: { text: '⏳', key: m.key } }) } catch {}
+  try { await conn.sendMessage(m.chat, { react: { text: '🔄', key: m.key } }) } catch {}
   try { await conn.sendPresenceUpdate('composing', m.chat) } catch {}
 
   // util
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
-  // reconnection/backoff state (kept per-start invocation)
+  // reconnection/backoff state
   let retryCount = 0
-  let destroyed = false // if we decide to stop trying (e.g. logged out)
+  let destroyed = false
 
   const start = async () => {
     if (destroyed) return
@@ -96,13 +93,9 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
         if (!sock.user) {
           try {
             cleanedForInvalidCreds = true
-            // close ws if any
             try { sock.ws?.close() } catch {}
-            // remove event listeners
             sock.ev.removeAllListeners()
-            // remove from global list
             global.subbots = global.subbots.filter(c => c.id !== userName)
-            // remove folder
             try { 
               fs.rmSync(folder, { recursive: true, force: true }) 
             } catch (e) {
@@ -113,31 +106,27 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
             console.error('Error en limpieza por timeout:', e)
           }
         }
-      }, 60000) // 60s
+      }, 60000)
 
       sock.ev.on('connection.update', async (update) => {
         try {
           const { connection, lastDisconnect } = update
 
           if (connection === 'open') {
-            // reset retry count on successful open
             retryCount = 0
             sock.__sessionOpenAt = Date.now()
             sock.connection = 'open'
             sock.uptime = new Date()
 
-            // --- VERSIÓN ORIGINAL (añadida la reconexión robusta) ---
-            // Filtramos y añadimos a global.subbots
             global.subbots = global.subbots.filter(c => c.id !== userName)
             global.subbots.push(sock)
             clearTimeout(initTimeout)
             
-            // React success
             try { await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } }) } catch {}
             
             try {
               await sleep(500)
-              await conn.reply(m.chat, '```🧘‍♀️ Ya estas activa como sub-bot en mi Sistema ✅```\n\n> _Si deseas tener más bots así contacta a mi desarrollador._', m)
+              await conn.reply(m.chat, '*⚙️ 𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️*\n\n> ✅ 𝚂𝚄𝙱𝙱𝙾𝚃 𝙰𝙲𝚃𝙸𝚅𝙰𝙳𝙾\n> 🤖 𝚂𝙴𝚂𝙸𝙾𝙽 𝙸𝙽𝙸𝙲𝙸𝙰𝙳𝙰', m)
             } catch (e) {}
             
             console.log(`[SUB-BOT ${userName}] Conectado`)
@@ -147,9 +136,7 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
             
             const reason = lastDisconnect?.error?.output?.statusCode || lastDisconnect?.error?.output?.payload?.statusCode
             
-            // if invalid credentials, remove session folder
             if (reason === DisconnectReason.loggedOut || reason === 401 || reason === 405 || reason === 403) {
-              // do not reconnect: remove session folder
               try {
                 fs.rmSync(folder, { recursive: true, force: true })
               } catch (e) {
@@ -160,23 +147,11 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
               return
             }
 
-            // For transient errors we will attempt reconnection with exponential backoff.
-            // Map some common HTTP-like status codes to behaviours (inspired by example).
-            if (reason === 428 || reason === 408) {
-              console.log(`[SUB-BOT ${userName}] Conexión perdida o expiró (${reason}). Reintentando...`)
-            } else if (reason === 440) {
-              console.log(`[SUB-BOT ${userName}] Reemplazada por otra sesión activa (440). Intentando reconectar...`)
-            } else if (reason === 500 || reason === 515) {
-              console.log(`[SUB-BOT ${userName}] Error servidor (${reason}). Reiniciando sesión...`)
-            } else {
-              console.log(`[SUB-BOT ${userName}] Conexión cerrada (reason: ${reason}). Reintentando...`)
-            }
+            console.log(`[SUB-BOT ${userName}] Conexión cerrada (reason: ${reason}). Reintentando...`)
 
-            // increment retry count and calculate backoff
             retryCount = (retryCount || 0) + 1
-            const backoff = Math.min(60000, 2000 * (2 ** Math.min(retryCount, 6))) // max 60s
+            const backoff = Math.min(60000, 2000 * (2 ** Math.min(retryCount, 6)))
             setTimeout(() => {
-              // if we were cleaned for invalid creds, don't start again
               if (cleanedForInvalidCreds) return
               if (destroyed) return
               try {
@@ -191,7 +166,7 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
         }
       })
 
-      // group participants placeholder (kept)
+      // group participants placeholder
       sock.ev.on('group-participants.update', async (update) => {
         try {
           const { id, participants, action } = update || {}
@@ -199,67 +174,38 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
         } catch (e) {}
       })
 
-      // pairing code flow (solo si no hay credenciales registradas)
+      // pairing code flow
       if (!state.creds?.registered && !pairingCodeSent) {
         pairingCodeSent = true
 
-        // Emoji de espera
-        try { await conn.sendMessage(m.chat, { react: { text: '🕑', key: m.key } }) } catch {}
+        try { await conn.sendMessage(m.chat, { react: { text: '⏳', key: m.key } }) } catch {}
         setTimeout(async () => {
           try {
             const rawCode = await sock.requestPairingCode(userName)
 
-            // Emoji cuando se genera el código
-            try { await conn.sendMessage(m.chat, { react: { text: '✅️', key: m.key } }) } catch {}
+            try { await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } }) } catch {}
 
-            // Imagen URL
-            const imageUrl = 'https://cdn.russellxz.click/73109d7e.jpg'
-            // note: prepareWAMessageMedia uses the main connection's upload function.
-            // If main conn is offline, upload may fail; we try/catch to avoid breaking subbot lifecycle.
-            let media
-            try {
-              media = await prepareWAMessageMedia({ image: { url: imageUrl } }, { upload: conn.waUploadToServer })
-            } catch (e) {
-              // fallback: no media if upload fails
-              media = null
-            }
-
-            const header = media ? proto.Message.InteractiveMessage.Header.fromObject({
-              hasMediaAttachment: true,
-              imageMessage: media.imageMessage
-            }) : null
-
-            // Crear mensaje interactivo con botones
+            // Crear mensaje interactivo SIN imagen
             const interactiveMessage = proto.Message.InteractiveMessage.fromObject({
-              header,
               body: proto.Message.InteractiveMessage.Body.fromObject({
-                text: `> *❀ OPCIÓN-CODIGO ❀*
-  
-> 1. 📲 *WhatsApp → Ajustes*  
-> 2. ⛓️‍💥 *Dispositivos vinculados*  
-> 3. 🔐 *Toca vincular*  
-> 4. ✨ Copia este código:
-> ˗ˏˋ ꕤ  ${rawCode.match(/.{1,4}/g)?.join(' ⸰ ')}  ꕤ ˎˊ˗
-> ⌛ ⋮ *10 segundos de magia*  
-> 🍒 ࣪𓂃 *¡Consejito dale rapidito!* ˚₊‧꒰ა ♡ ໒꒱ ‧₊˚`
+                text: `*⚙️ 𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️*\n\n` +
+                      `> 🔐 𝙲𝙾𝙳𝙸𝙶𝙾 𝙳𝙴 𝚅𝙸𝙽𝙲𝚄𝙻𝙰𝙲𝙸𝙾𝙽\n` +
+                      `> 📲 𝚆𝙷𝙰𝚃𝚂𝙰𝙿𝙿 → 𝙰𝙹𝚄𝚂𝚃𝙴𝚂\n` +
+                      `> ⛓️ 𝙳𝙸𝚂𝙿𝙾𝚂𝙸𝚃𝙸𝚅𝙾𝚂 𝚅𝙸𝙽𝙲𝚄𝙻𝙰𝙳𝙾𝚂\n` +
+                      `> 🆕 𝚃𝙾𝙲𝙰 𝚅𝙸𝙽𝙲𝚄𝙻𝙰𝚁 𝚄𝙽 𝙳𝙸𝚂𝙿𝙾𝚂𝙸𝚃𝙸𝚅𝙾\n` +
+                      `> 📋 𝙲𝙾𝙿𝙸𝙰 𝙴𝙻 𝙲𝙾𝙳𝙸𝙶𝙾:\n\n` +
+                      `*${rawCode.match(/.{1,4}/g)?.join(' ')}*`
               }),
               footer: proto.Message.InteractiveMessage.Footer.fromObject({
-                text: "ᴄᴏᴘɪᴀ ᴇʟ ᴄᴏᴅɪɢᴏ ᴀǫᴜɪ ᴀʙᴀᴊᴏ 🌺"
+                text: "𝚅𝙰𝙻𝙸𝙳𝙾 𝙿𝙾𝚁 𝟼𝟶 𝚂𝙴𝙶𝚄𝙽𝙳𝙾𝚂"
               }),
               nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.fromObject({
                 buttons: [
                   {
                     name: "cta_copy",
                     buttonParamsJson: JSON.stringify({
-                      display_text: "𝗖𝗼𝗽𝗶𝗮 𝗘𝗹 𝗖𝗼𝗱𝗶𝗴𝗼 📋",
+                      display_text: "📋 𝙲𝙾𝙿𝙸𝙰𝚁 𝙲𝙾𝙳𝙸𝙶𝙾",
                       copy_code: rawCode
-                    })
-                  },
-                  {
-                    name: "cta_url",
-                    buttonParamsJson: JSON.stringify({
-                      display_text: "𝗖𝗮𝗻𝗮𝗹 𝗢𝗳𝗶𝗰𝗮𝗹 🌷",
-                      url: "https://whatsapp.com/channel/0029VbBvZH5LNSa4ovSSbQ2N"
                     })
                   }
                 ]
@@ -270,12 +216,9 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
             try {
               await conn.relayMessage(m.chat, msg.message, { messageId: msg.key.id })
             } catch (e) {
-              // if relay fails (main conn offline), attempt to send via sock (best effort)
               try {
-                await sock.sendMessage(m.chat, { text: `Código: ${rawCode}` }, { quoted: m })
-              } catch (e2) {
-                // give up silently; subbot remains running
-              }
+                await sock.sendMessage(m.chat, { text: `*⚙️ 𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️*\n\n> 🔐 𝙲𝙾𝙳𝙸𝙶𝙾: ${rawCode}` }, { quoted: m })
+              } catch (e2) {}
             }
 
             console.log(`Código de vinculación enviado: ${rawCode}`)
@@ -283,7 +226,7 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
           } catch (err) {
             console.error('Error al obtener pairing code:', err)
             try { await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } }) } catch {}
-            try { await conn.reply(m.chat, `*⚙️ Error: ${err.message}*`, m) } catch {}
+            try { await conn.reply(m.chat, `*⚙️ 𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️*\n\n> ⚠️ 𝙴𝚁𝚁𝙾𝚁: ${err.message}`, m) } catch {}
           }
         }, 3000)
       }
@@ -291,8 +234,7 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
     } catch (error) {
       console.error('Error al crear socket:', error)
       try { await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } }) } catch {}
-      try { await conn.reply(m.chat, `Error critico: ${error.message}`, m) } catch {}
-      // Attempt restart with backoff if not destroyed
+      try { await conn.reply(m.chat, `*⚙️ 𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️*\n\n> ⚠️ 𝙴𝚁𝚁𝙾𝚁: ${error.message}`, m) } catch {}
       retryCount = (retryCount || 0) + 1
       const backoff = Math.min(60000, 2000 * (2 ** Math.min(retryCount, 6)))
       setTimeout(() => {
@@ -301,8 +243,6 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
     }
   }
 
-  // Start subbot in background; even if main conn later disconnects, this function
-  // will manage its own reconnections independent of the main bot's state.
   start()
 }
 

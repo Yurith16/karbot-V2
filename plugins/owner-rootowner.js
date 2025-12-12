@@ -1,6 +1,6 @@
 let handler = async (m, { conn, usedPrefix, command, isROwner }) => {
     // Solo el creador puede usar este comando
-    if (!isROwner) return m.reply('> ⓘ Este comando solo puede ser usado por el *Creador* del bot.')
+    if (!isROwner) return m.reply('*⚙️ 𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️*\n\n> 👑 𝚂𝙾𝙻𝙾 𝙿𝙰𝚁𝙰 𝙲𝚁𝙴𝙰𝙳𝙾𝚁')
 
     let chat = global.db.data.chats[m.chat]
 
@@ -9,51 +9,35 @@ let handler = async (m, { conn, usedPrefix, command, isROwner }) => {
     let action = args[0]?.toLowerCase()
 
     if (!action || (action !== 'on' && action !== 'off')) {
-        let status = chat.rootowner ? '🟢 ACTIVADO' : '🔴 DESACTIVADO'
-        return m.reply(`╭─「 🛡️ *MODO ROOTOWNER* 🛡️ 」
-│ 
-│ 📊 Estado actual: ${status}
-│ 
-│ 💡 *Uso del comando:*
-│ ├ ${usedPrefix}rootowner on
-│ └ ${usedPrefix}rootowner off
-│ 
-│ 📝 *Descripción:*
-│ Cuando está ACTIVADO, el bot solo
-│ responderá a mensajes del Creador
-│ en este grupo.
-╰─◉`.trim())
+        let status = chat.rootowner ? '🟢 𝙰𝙲𝚃𝙸𝚅𝙾' : '🔴 𝙸𝙽𝙰𝙲𝚃𝙸𝚅𝙾'
+        return m.reply(`*⚙️ 𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️*\n\n` +
+            `> 🛡️ 𝙼𝙾𝙳𝙾 𝚁𝙾𝙾𝚃𝙾𝚆𝙽𝙴𝚁\n` +
+            `> 📊 𝙴𝚂𝚃𝙰𝙳𝙾: ${status}\n\n` +
+            `> 💡 𝚄𝚂𝙾:\n` +
+            `> ${usedPrefix}rootowner on\n` +
+            `> ${usedPrefix}rootowner off\n\n` +
+            `> 📝 𝙴𝙻 𝙱𝙾𝚃 𝚂𝙾𝙻𝙾 𝚁𝙴𝚂𝙿𝙾𝙽𝙳𝙴𝚁𝙰 𝙰𝙻 𝙲𝚁𝙴𝙰𝙳𝙾𝚁`)
     }
 
     if (action === 'on') {
         if (chat.rootowner) {
-            return m.reply('> ⓘ El modo *RootOwner* ya está activado en este grupo.')
+            return m.reply('*⚙️ 𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️*\n\n> ⚠️ 𝚈𝙰 𝙴𝚂𝚃𝙰 𝙰𝙲𝚃𝙸𝚅𝙾')
         }
         chat.rootowner = true
-        m.reply(`╭─「 🛡️ *MODO ROOTOWNER ACTIVADO* 🛡️ 」
-│ 
-│ ✅ *Configuración aplicada:*
-│ ├ El bot ahora solo responderá
-│ └ a tus mensajes en este grupo.
-│ 
-│ 🔒 *Modo exclusivo activado*
-│ 📍 Grupo: ${m.chat}
-╰─◉`.trim())
+        m.reply('*⚙️ 𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️*\n\n' +
+            `> 🛡️ 𝙼𝙾𝙳𝙾 𝚁𝙾𝙾𝚃𝙾𝚆𝙽𝙴𝚁 𝙰𝙲𝚃𝙸𝚅𝙰𝙳𝙾\n` +
+            `> ✅ 𝙲𝙾𝙽𝙵𝙸𝙶𝚄𝚁𝙰𝙲𝙸𝙾𝙽 𝙰𝙿𝙻𝙸𝙲𝙰𝙳𝙰\n` +
+            `> 🔒 𝚂𝙾𝙻𝙾 𝚁𝙴𝚂𝙿𝙾𝙽𝙳𝙴 𝙰 𝙲𝚁𝙴𝙰𝙳𝙾𝚁`)
 
     } else if (action === 'off') {
         if (!chat.rootowner) {
-            return m.reply('> ⓘ El modo *RootOwner* ya está desactivado en este grupo.')
+            return m.reply('*⚙️ 𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️*\n\n> ⚠️ 𝚈𝙰 𝙴𝚂𝚃𝙰 𝙸𝙽𝙰𝙲𝚃𝙸𝚅𝙾')
         }
         chat.rootowner = false
-        m.reply(`╭─「 🛡️ *MODO ROOTOWNER DESACTIVADO* 🛡️ 」
-│ 
-│ ✅ *Configuración aplicada:*
-│ ├ El bot ahora responderá
-│ └ a todos los usuarios.
-│ 
-│ 🔓 *Modo exclusivo desactivado*
-│ 📍 Grupo: ${m.chat}
-╰─◉`.trim())
+        m.reply('*⚙️ 𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️*\n\n' +
+            `> 🛡️ 𝙼𝙾𝙳𝙾 𝚁𝙾𝙾𝚃𝙾𝚆𝙽𝙴𝚁 𝙳𝙴𝚂𝙰𝙲𝚃𝙸𝚅𝙰𝙳𝙾\n` +
+            `> ✅ 𝙲𝙾𝙽𝙵𝙸𝙶𝚄𝚁𝙰𝙲𝙸𝙾𝙽 𝙰𝙿𝙻𝙸𝙲𝙰𝙳𝙰\n` +
+            `> 🔓 𝚁𝙴𝚂𝙿𝙾𝙽𝙳𝙴 𝙰 𝚃𝙾𝙳𝙾𝚂`)
     }
 }
 

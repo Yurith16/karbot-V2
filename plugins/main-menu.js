@@ -7,7 +7,7 @@ import { performance } from 'perf_hooks'
 const KARBOT_CONFIG = {
   BOT_NAME: "KARBOT",
   OWNER_NAME: "HERNANDEZ",
-  OWNER_NUMBER: "573187418668",
+  OWNER_NUMBER: "50496926150",
   MENU_IMAGE: "https://image2url.com/images/1765486087799-4050fc16-aeff-4200-b499-20a5538148a7.jpg"
 }
 
